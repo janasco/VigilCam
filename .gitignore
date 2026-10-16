@@ -1,0 +1,15 @@
+# Python / virtualenv
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Local secrets and data
+.env
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Build / OS
+.DS_Store
