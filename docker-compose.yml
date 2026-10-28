@@ -6,7 +6,7 @@ services:
     image: vigilcam:latest
     container_name: vigilcam
     ports:
-      - "${PORT:-8080}:8080"
+      - "${PORT:-11947}:11947"
     volumes:
       - ./data:/app/data
     environment:

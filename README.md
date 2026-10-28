@@ -27,7 +27,7 @@ cd VigilCam
 ./start.sh
 ```
 
-Open <http://localhost:8080>.
+Open <http://vigilcam.local:11947> or <http://localhost:11947>.
 
 ### Docker
 

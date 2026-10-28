@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VigilCam Setup</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/static/vigilcam.css">
+</head>
+<body class="bg-light">
+<div class="container py-4">
+  <h1 class="mb-3"><i class="bi bi-gear"></i> VigilCam First-Time Setup</h1>
+
+  <ul class="nav nav-tabs mb-3" id="setupTabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#s-env" type="button">1. Environment</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#s-discovery" type="button">2. Discovery</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#s-storage" type="button">3. Storage</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#s-recording" type="button">4. Recording</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#s-finish" type="button">5. Finish</button></li>
+  </ul>
+
+  <div class="tab-content">
+    <div class="tab-pane fade show active" id="s-env">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5>Environment Check</h5>
+          <p id="envInfo" class="text-muted small"></p>
+          <div class="row g-2">
+            <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Service</div><div id="metricService" class="fw-bold">unknown</div></div></div>
+            <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Cameras</div><div id="metricCameras" class="fw-bold">0</div></div></div>
+            <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Active recordings</div><div id="metricActiveRecordings" class="fw-bold">0</div></div></div>
+            <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="small text-muted">Storage root</div><div id="metricStorage" class="small text-truncate">-</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="s-discovery">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5>Network Probe / Camera discovery</h5>
+          <p class="text-muted small">ONVIF and subnet discovery run server-side; cameras can be added after setup.</p>
+          <form id="probeForm" class="row g-2 mb-2">
+            <div class="col-md-6"><input name="host" class="form-control" placeholder="camera host/IP" required></div>
+            <div class="col-md-2"><input name="port" type="number" value="80" class="form-control"></div>
+            <div class="col-md-4"><button class="btn btn-outline-primary w-100" type="submit">Probe</button></div>
+          </form>
+          <div id="discoveryList" class="list-group mb-2"></div>
+          <pre id="probeResult" class="small"></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="s-storage">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5>Storage</h5>
+          <p class="text-muted small">Default storage directory is configured by the VigilCam installer.</p>
+          <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <strong>Recordings status panel</strong>
+              <button class="btn btn-sm btn-outline-secondary" onclick="refreshRecordingStatus()">Refresh</button>
+            </div>
+            <div class="card-body">
+              <pre id="recordingStatus" class="small mb-0" style="max-height:240px;overflow:auto;">Loading...</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="s-recording">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5>Recording controls</h5>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <form id="startRecordingForm">
+                <div class="mb-2"><input name="main_url" class="form-control" placeholder="rtsp://..." required></div>
+                <div class="mb-2"><input name="camera_id" type="number" class="form-control" placeholder="Camera ID (optional)"></div>
+                <button class="btn btn-success btn-sm" type="submit">Start recording</button>
+                <div id="startRecordingStatus" class="small text-muted mt-1"></div>
+              </form>
+            </div>
+            <div class="col-md-6">
+              <form id="stopRecordingForm">
+                <div class="mb-2"><input name="camera_name" class="form-control" placeholder="Camera name" required></div>
+                <button class="btn btn-danger btn-sm" type="submit">Stop recording</button>
+                <div id="stopRecordingStatus" class="small text-muted mt-1"></div>
+              </form>
+            </div>
+          </div>
+          <form id="retentionForm" class="row g-2 mt-3">
+            <div class="col-md-3"><input name="max_age_days" type="number" class="form-control" placeholder="Max age days"></div>
+            <div class="col-md-3"><input name="max_total_mb" type="number" class="form-control" placeholder="Max total MB"></div>
+            <div class="col-md-3"><input name="camera_name" class="form-control" placeholder="Camera name"></div>
+            <div class="col-md-2">
+              <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" name="dry_run" id="dryRunCheck" checked>
+                <label class="form-check-label" for="dryRunCheck">Dry run</label>
+              </div>
+            </div>
+            <div class="col-md-1"><button class="btn btn-warning btn-sm w-100" type="submit">Run</button></div>
+          </form>
+          <div id="retentionStatus" class="small text-muted mt-1"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="s-finish">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5>Complete Setup</h5>
+          <div class="progress mb-3" style="height:20px"><div id="setupProg" class="progress-bar" style="width:0%">0%</div></div>
+          <div id="setupSteps" class="small text-muted mb-2"></div>
+          <button class="btn btn-primary" id="finishBtn">Finish Setup</button>
+          <p id="finishStatus" class="mt-2 text-muted"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function q(id){ return document.getElementById(id); }
+document.getElementById('envInfo').textContent = navigator.userAgent;
+
+async function loadDiscovery() {
+  try {
+    const res = await fetch('/api/cameras');
+    const cams = await res.json();
+    q('metricCameras').textContent = Array.isArray(cams) ? cams.length : 0;
+    const el = q('discoveryList');
+    el.innerHTML = '';
+    if (!cams.length) { el.innerHTML = '<div class="text-muted p-2">No cameras discovered yet.</div>'; return; }
+    for (const c of cams) {
+      const item = document.createElement('div');
+      item.className = 'list-group-item';
+      item.innerHTML = `<div class="d-flex justify-content-between"><span>${escapeHtml(c.name)} (${escapeHtml(c.kind)})</span><small class="text-muted">${escapeHtml(c.source)}</small></div>`;
+      el.appendChild(item);
+    }
+  } catch (e) {
+    q('discoveryList').innerHTML = '<div class="text-danger p-2">Discovery unavailable.</div>';
+  }
+}
+function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+async function refreshRecordingStatus() {
+  try {
+    const res = await fetch('/api/recordings/status');
+    const data = await res.json();
+    q('recordingStatus').textContent = JSON.stringify(data, null, 2);
+    q('metricActiveRecordings').textContent = data.active_count ?? (data.active ? data.active.length : 0);
+    q('metricStorage').textContent = data.storage_root || '-';
+  } catch (e) {
+    q('recordingStatus').textContent = 'Failed to load recording status.';
+  }
+}
+
+async function loadHealth() {
+  try {
+    const res = await fetch('/health');
+    const data = await res.json();
+    q('metricService').textContent = data.status || 'ok';
+  } catch (e) {
+    q('metricService').textContent = 'offline';
+  }
+}
+
+q('probeForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  q('probeResult').textContent = 'Probing…';
+  try {
+    const res = await fetch('/api/onvif/probe_device', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ip: fd.get('host'), username:'admin', password:'admin', port: Number(fd.get('port'))||80 }) });
+    const data = await res.json();
+    q('probeResult').textContent = JSON.stringify(data, null, 2);
+  } catch(err) { q('probeResult').textContent = 'Probe failed (device may need credentials): '+err.message; }
+  loadDiscovery();
+});
+
+q('startRecordingForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = { main_url: fd.get('main_url') };
+  const cid = fd.get('camera_id');
+  if (cid) body.camera_id = Number(cid);
+  const res = await fetch('/api/recordings/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  q('startRecordingStatus').textContent = res.ok ? 'Started' : ('Failed: ' + JSON.stringify(data));
+  refreshRecordingStatus();
+});
+
+q('stopRecordingForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = { camera_name: fd.get('camera_name') };
+  const res = await fetch('/api/recordings/stop', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  q('stopRecordingStatus').textContent = res.ok ? `Stopped ${data.stopped_recordings ?? ''}` : ('Failed: ' + JSON.stringify(data));
+  refreshRecordingStatus();
+});
+
+q('retentionForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const body = { dry_run: fd.get('dry_run') === 'on' };
+  const age = fd.get('max_age_days'); if (age) body.max_age_days = Number(age);
+  const mb = fd.get('max_total_mb'); if (mb) body.max_total_bytes = Number(mb) * 1024 * 1024;
+  const cam = fd.get('camera_name'); if (cam) body.camera_name = cam;
+  const res = await fetch('/api/recordings/retention/run', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await res.json();
+  q('retentionStatus').textContent = res.ok ? JSON.stringify(data) : ('Failed: ' + JSON.stringify(data));
+  refreshRecordingStatus();
+});
+
+q('finishBtn').addEventListener('click', async () => {
+  const status = q('finishStatus');
+  status.textContent = 'Completing setup...';
+  const res = await fetch('/api/v1/setup/complete', { method: 'POST' });
+  if (res.ok) {
+    status.textContent = 'Setup complete. Redirecting...';
+    window.location.href = '/';
+  } else {
+    status.textContent = 'Setup failed. See server logs.';
+  }
+});
+
+async function loadSetupProgress() {
+  try {
+    const res = await fetch('/api/setup-wizard/status');
+    if (!res.ok) return;
+    const st = await res.json();
+    const steps = st.steps || st.step_names || ['environment','discovery','storage','recording','finish'];
+    const cur = st.current_step || st.current || 'environment';
+    const idx = Math.max(0, steps.indexOf(cur));
+    const pct = Math.round(((idx + (st.initialized ? 1 : 0)) / steps.length) * 100);
+    const bar = q('setupProg');
+    if (bar) { bar.style.width = pct + '%'; bar.textContent = pct + '%'; }
+    const box = q('setupSteps');
+    if (box) box.innerHTML = steps.map((s, i) => `<span class="badge ${i < idx || st.initialized ? 'text-bg-success' : i === idx ? 'text-bg-primary' : 'text-bg-secondary'} me-1">${i < idx || st.initialized ? '✓ ' : ''}${s}</span>`).join('');
+  } catch (e) { /* setup progress optional */ }
+}
+
+loadSetupProgress();
+
+loadHealth();
+loadDiscovery();
+refreshRecordingStatus();
+</script>
+</body>
+</html>

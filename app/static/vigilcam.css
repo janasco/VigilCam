@@ -1,3 +1,16 @@
 body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-.card { border-radius: 0.75rem; }
-#cameraList .list-group-item { border: 0; border-bottom: 1px solid #e9ecef; }
+.navbar-brand { font-weight: 700; }
+#sidebar { min-height: calc(100vh - 56px); }
+.nav-pills .nav-link { border-radius: .5rem; color: #343a40; }
+.nav-pills .nav-link.active { background: #0d6efd; color: #fff; }
+.card { border-radius: .75rem; }
+.cam-card img { height: 150px; object-fit: cover; background: #111; width: 100%; border-top-left-radius: .75rem; border-top-right-radius: .75rem; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot.on { background: #198754; }
+.dot.off { background: #dc3545; }
+.event-thumb { width: 72px; height: 54px; object-fit: cover; border-radius: .35rem; background: #222; }
+#zoneCanvas { border: 1px solid #dee2e6; border-radius: .5rem; max-width: 100%; background: #111; cursor: crosshair; }
+.toast-wrap { position: fixed; bottom: 1rem; right: 1rem; z-index: 1080; max-width: min(92vw, 380px); }
+#sideTabs { flex-wrap: nowrap; overflow-x: auto; }
+@media (max-width: 767px){ #sidebar{ min-height: auto; } .cam-card img{ height: 110px; } }
+pre.mini { max-height: 260px; overflow: auto; font-size: .78rem; }

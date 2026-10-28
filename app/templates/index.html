@@ -5,151 +5,537 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>VigilCam</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="/static/vigilcam.css">
 </head>
 <body class="bg-light">
 <nav class="navbar navbar-dark bg-dark">
   <div class="container-fluid">
-    <span class="navbar-brand mb-0 h1">VigilCam</span>
-    <span class="text-secondary small">AI-driven NVR scaffold</span>
+    <a class="navbar-brand" href="/"><i class="bi bi-camera-video-fill"></i> VigilCam <span class="badge text-bg-warning" style="font-size:.65rem" id="buildTag2" title="UI build — if this doesn't say Oct27-hero, hard-refresh">Oct27-hero</span></a>
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge text-bg-secondary" id="navCount">…</span>
+      <span class="badge text-bg-success" id="navHealth">●</span>
+      <a class="btn btn-sm btn-outline-light" href="/docs" target="_blank">API</a>
+      <button class="btn btn-sm btn-outline-light" onclick="openWall()" title="Fullscreen live wall">🧱 Wall</button>
+      <button class="btn btn-sm btn-outline-light" onclick="refreshAll()" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>
+    </div>
   </div>
 </nav>
-<div class="container py-4">
-  <div class="row g-4">
-    <div class="col-lg-7">
-      <div class="card shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <strong>Cameras</strong>
-          <button class="btn btn-sm btn-outline-secondary" onclick="loadCameras()">Refresh</button>
-        </div>
-        <div class="card-body">
-          <div id="cameraList" class="list-group"></div>
-        </div>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-2 bg-white border-end p-3" id="sidebar">
+      <button class="btn btn-sm btn-outline-secondary d-md-none mb-2" onclick="document.getElementById('sidebar').classList.toggle('d-none')">Menu</button>
+      <div class="nav nav-pills flex-column gap-1" id="sideTabs">
+        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#v-dashboard">Dashboard</button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-cameras">Cameras</button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-events">Events</button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-people">People</button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-review">Review</button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-record">Recordings</button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-auto">Automate</button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#v-system">System</button>
       </div>
-      <div class="card shadow-sm mt-4">
-        <div class="card-header"><strong>Recent events</strong></div>
-        <div class="card-body">
-          <div id="eventList" class="small text-muted"></div>
-        </div>
-      </div>
+      <hr>
+      <div class="small text-muted text-center">VigilCam <span id="buildTag">wall-1</span> · <a href="/docs" target="_blank">API</a></div>
+      <hr>
+      <div class="small text-muted">Live activity</div>
+      <div id="activityBox" class="small">—</div>
     </div>
-    <div class="col-lg-5">
-      <div class="card shadow-sm">
-        <div class="card-header"><strong>Add camera</strong></div>
-        <div class="card-body">
-          <form id="addCameraForm">
-            <div class="mb-2">
-              <label class="form-label">Name</label>
-              <input name="name" class="form-control" required>
+
+    <div class="col-md-10 p-3">
+      <div class="tab-content">
+        <!-- DASHBOARD -->
+        <div class="tab-pane fade show active" id="v-dashboard">
+          <div class="p-4 mb-3 text-white" style="border-radius:.75rem;background:linear-gradient(120deg,#0d1b2a,#1b3a5c 60%,#0d6efd)">
+            <div class="d-flex flex-wrap align-items-center gap-4">
+              <div><div class="display-5 fw-bold" id="mCamsHero">—</div><div class="small opacity-75">cameras</div></div>
+              <div><div class="display-5 fw-bold" id="mActiveHero">—</div><div class="small opacity-75">active now</div></div>
+              <div><div class="display-5 fw-bold" id="mEventsHero">—</div><div class="small opacity-75">events today</div></div>
+              <div class="ms-auto d-flex gap-2"><button class="btn btn-light" onclick="openWall()">Live wall</button><button class="btn btn-outline-light" onclick="refreshAll()">Refresh</button></div>
             </div>
-            <div class="mb-2">
-              <label class="form-label">Kind</label>
-              <select name="kind" class="form-select">
-                <option value="ip">IP (RTSP/HTTP)</option>
-                <option value="usb">USB</option>
-                <option value="onvif">ONVIF</option>
-              </select>
+          </div>
+          <div class="card mb-3 overflow-hidden"><div class="row g-0">
+            <div class="col-md-7 p-0"><img id="heroMosaic" class="img-fluid w-100" style="max-height:300px;object-fit:cover;background:#111;cursor:pointer" alt="All cameras" title="Open live wall" onclick="openWall()"></div>
+            <div class="col-md-5 p-3 d-flex flex-column justify-content-center">
+              <h4 class="mb-1">All cameras, one glance</h4>
+              <p class="text-muted small mb-2"><span id="heroCount">—</span> cameras · updated <span id="heroTime">—</span></p>
+              <div><button class="btn btn-primary me-2" onclick="openWall()">🧱 Open live wall</button><button class="btn btn-outline-secondary" onclick="heroRefresh()">↻ Refresh mosaic</button></div>
             </div>
-            <div class="mb-2">
-              <label class="form-label">Source</label>
-              <input name="source" class="form-control" placeholder="0 (USB), rtsp://..., or onvif host" required>
+          </div></div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-3"><div class="card p-3"><div class="small text-muted">Cameras</div><div class="h4 mb-0" id="mCams">—</div></div></div>
+            <div class="col-md-3"><div class="card p-3"><div class="small text-muted">Active now</div><div class="h4 mb-0" id="mActive">—</div></div></div>
+            <div class="col-md-3"><div class="card p-3"><div class="small text-muted">Events today</div><div class="h4 mb-0" id="mEvents">—</div></div></div>
+            <div class="col-md-3"><div class="card p-3"><div class="small text-muted">CPU load</div><div class="h4 mb-0" id="mCpu">—</div></div></div>
+          </div>
+          <div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center"><strong>⚠ Alerts inbox</strong><span class="badge text-bg-danger" id="alertCount">0</span></div>
+            <div class="card-body py-2"><div id="alertInbox" class="d-flex flex-column gap-1 small">Loading…</div></div>
+          </div>
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <strong>Live grid</strong>
+              <div class="d-flex gap-2 align-items-center flex-wrap"><select id="gridCols" class="form-select form-select-sm" style="max-width:90px" onchange="loadCameras()" title="Columns"><option value="3">3-col</option><option value="2">2-col</option><option value="4">4-col</option></select><select id="gridGroup" class="form-select form-select-sm" style="max-width:130px" onchange="loadCameras()" title="Group filter"><option value="">All groups</option></select><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="activeOnly" checked><label class="form-check-label small" for="activeOnly">Active only</label></div><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="autoRef"><label class="form-check-label small" for="autoRef">Auto 15s</label></div><div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="sndAlert"><label class="form-check-label small" for="sndAlert" title="Beep on new event">🔔</label></div><button class="btn btn-sm btn-outline-secondary" onclick="toggleTheme()" title="Dark mode">◐</button><button class="btn btn-sm btn-outline-secondary" onclick="loadCameras()" title="Refresh live">↻</button></div>
             </div>
-            <div class="mb-2">
-              <label class="form-label">Username</label>
-              <input name="username" class="form-control">
-            </div>
-            <div class="mb-2">
-              <label class="form-label">Password</label>
-              <input name="password" type="password" class="form-control">
-            </div>
-            <button class="btn btn-primary" type="submit">Add</button>
-          </form>
+            <div class="card-body"><div id="liveGrid" class="row g-3"></div><div id="liveEmpty" class="text-muted">No cameras yet. Add one in Cameras tab.</div></div>
+          </div>
+          <div class="card mt-3">
+            <div class="card-header d-flex gap-2 align-items-center"><strong>Floor plan</strong><select id="fpLayout" class="form-select form-select-sm" style="max-width:200px" onchange="loadFloorplan(); if(this.selectedOptions[0]&&this.value) history.replaceState(null,'','#/layouts/'+this.selectedOptions[0].text.toLowerCase().replace(/[^a-z0-9]+/g,'-'))"><option value="">Select layout…</option></select><button class="btn btn-sm btn-outline-secondary" onclick="loadFpLayouts()">Reload</button></div>
+            <div class="card-body"><div id="fpWrap" style="position:relative;max-width:800px"><img id="fpImg" class="img-fluid" style="display:none;border-radius:.5rem" alt="floor plan"><canvas id="fpCanvas" width="800" height="450" style="display:none;width:100%;border:1px solid #dee2e6;border-radius:.5rem;background:#111"></canvas><div id="fpDots"></div></div><div id="fpEmpty" class="text-muted small">Pick a layout with camera positions to see live status dots.</div>
+            <div class="d-flex gap-2 mt-2 flex-wrap align-items-center"><button class="btn btn-sm btn-outline-primary" id="fpEditBtn" onclick="fpToggleEdit()">Edit positions</button><select id="fpAddCam" class="form-select form-select-sm" style="max-width:180px"></select><button class="btn btn-sm btn-outline-success" onclick="fpSave()">Save layout</button><span class="small text-muted">Edit: drag dots, or click empty space to place selected camera.</span></div></div>
+          </div>
         </div>
-      </div>
-      <div class="card shadow-sm mt-4">
-        <div class="card-header"><strong>ONVIF probe</strong></div>
-        <div class="card-body">
-          <form id="onvifForm">
-            <div class="mb-2">
-              <input name="host" class="form-control" placeholder="camera host/IP" required>
+
+        <!-- CAMERAS -->
+        <div class="tab-pane fade" id="v-cameras">
+          <div class="row g-3">
+            <div class="col-lg-7">
+              <div class="card"><div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2"><div class="d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input" id="camSelectAll" title="Select all" onchange="toggleAllCams(this.checked)"><strong>Cameras</strong><span class="small text-muted" id="camSelCount"></span></div><div class="d-flex gap-2 flex-wrap"><input id="camSearch" class="form-control form-control-sm" style="max-width:140px" placeholder="Search" oninput="loadCameras()"><button class="btn btn-sm btn-outline-success" onclick="bulkCams(true)" title="Enable selected">On</button><button class="btn btn-sm btn-outline-secondary" onclick="bulkCams(false)" title="Disable selected">Off</button><button class="btn btn-sm btn-outline-secondary" onclick="exportPresets()">Export</button><label class="btn btn-sm btn-outline-secondary mb-0">Import<input type="file" id="presetFile" accept=".json" class="d-none" onchange="importPresets(this)"></label><button class="btn btn-sm btn-outline-secondary" onclick="loadCameras()">Refresh</button><button class="btn btn-sm btn-outline-danger" onclick="delSelCams()" title="Delete selected">Del sel</button><button class="btn btn-sm btn-outline-danger" onclick="delAllCams()" title="Delete ALL cameras">Delete all</button></div></div>
+              <div class="card-body"><div id="camList" class="list-group"></div></div></div>
+              <div class="card mt-3"><div class="card-header"><strong>Network discovery</strong></div>
+              <div class="card-body"><div class="d-flex gap-2 mb-2 flex-wrap"><button class="btn btn-sm btn-outline-primary" onclick="loadDiscovery()">Scan network</button><button class="btn btn-sm btn-success" onclick="importAllNew()">Import all new</button><div class="form-check form-switch mb-0 align-self-center"><input class="form-check-input" type="checkbox" id="verifiedOnly" checked onchange="loadDiscovery()"><label class="form-check-label small" for="verifiedOnly">Verified cameras only</label></div></div><div id="discList" class="list-group"></div><div class="small text-muted mt-1">Already-added devices are marked and won't re-notify. Unverified entries are plain web devices, not cameras.</div></div></div>
             </div>
-            <div class="mb-2">
-              <input name="port" type="number" value="80" class="form-control">
+            <div class="col-lg-5">
+              <div class="card"><div class="card-header"><strong id="camFormTitle">Add camera</strong></div>
+              <div class="card-body"><form id="camForm">
+                <input type="hidden" id="fId">
+                <div class="mb-2"><label class="form-label">Name</label><div class="input-group"><input id="fName" class="form-control" required><button class="btn btn-outline-secondary" type="button" onclick="suggestName()" title="Suggest from device">✨</button></div></div>
+                <div class="row g-2 mb-2">
+                  <div class="col"><label class="form-label">Kind</label><select id="fKind" class="form-select"><option value="ip">IP</option><option value="usb">USB</option><option value="onvif">ONVIF</option></select></div>
+                  <div class="col"><label class="form-label">USB</label><select id="fUsb" class="form-select"><option value="">—</option></select></div>
+                </div>
+                <div class="mb-2"><label class="form-label">Source <small class="text-muted" id="srcHint">rtsp://, http://, or onvif host</small></label><input id="fSource" class="form-control" placeholder="0, rtsp://…, http://…" required></div>
+                <div class="row g-2 mb-2"><div class="col"><input id="fUser" class="form-control" placeholder="Username"></div><div class="col"><div class="input-group"><input id="fPass" type="password" class="form-control" placeholder="Password"><button class="btn btn-outline-secondary" type="button" onclick="const p=$('fPass');p.type=p.type==='password'?'text':'password'">👁</button></div></div></div>
+                <div class="row g-2 mb-2"><div class="col"><label class="form-label small">Recording</label><select id="fRecMode" class="form-select"><option value="motion">Motion-triggered</option><option value="always">Always</option><option value="manual">Manual</option><option value="scheduled">Scheduled</option><option value="never">Off</option></select></div><div class="col"><label class="form-label small">Alerts</label><select id="fAlert" class="form-select"><option value="1">On</option><option value="0">Off</option></select></div></div>
+                <div class="d-flex gap-2"><button class="btn btn-primary" type="submit">Save</button><button class="btn btn-outline-secondary" type="button" onclick="resetCamForm()">Reset</button></div>
+              </form></div></div>
+              <div class="card mt-3"><div class="card-header"><strong>ONVIF probe</strong></div>
+              <div class="card-body"><div class="input-group"><input id="onvifIp" class="form-control" placeholder="camera IP"><button class="btn btn-outline-primary" onclick="probeOnvif()">Probe</button></div><pre id="onvifOut" class="mini mt-2"></pre></div></div>
+              <div class="card mt-3"><div class="card-header d-flex justify-content-between"><strong>Microphones</strong><button class="btn btn-sm btn-outline-secondary" onclick="loadMics()">Refresh</button></div>
+              <div class="card-body"><div id="micList" class="list-group mb-2"></div>
+              <div class="input-group"><input id="micName" class="form-control form-control-sm" placeholder="Mic name"><input id="micSrc" class="form-control form-control-sm" placeholder="source"><button class="btn btn-sm btn-primary" onclick="addMic()">Add</button></div></div></div>
             </div>
-            <button class="btn btn-outline-primary" type="submit">Probe</button>
-          </form>
-          <pre id="onvifResult" class="mt-2 small"></pre>
+          </div>
+        </div>
+
+        <!-- EVENTS -->
+        <div class="tab-pane fade" id="v-events">
+          <div class="card"><div class="card-header d-flex flex-wrap gap-2 align-items-center">
+            <strong>Events</strong><span class="badge text-bg-warning" id="unackBadge" title="Unacknowledged events">0</span>
+            <input id="eLabel" class="form-control form-control-sm" style="max-width:140px" placeholder="Label">
+            <select id="eventFilterCamera" class="form-select form-select-sm" style="max-width:150px"><option value="">All cameras</option></select>
+            <input id="eTag" class="form-control form-control-sm" style="max-width:120px" placeholder="Tag"><input id="semQ" class="form-control form-control-sm" style="max-width:140px" placeholder="Semantic search"><button class="btn btn-sm btn-outline-info" onclick="loadSem()">Search</button>
+            <select id="eSaved" class="form-select form-select-sm" style="max-width:150px" onchange="applySavedFilter(this.value)"><option value="">Saved…</option></select>
+            <button class="btn btn-sm btn-outline-primary" onclick="loadEvents()">Filter</button>
+            <button class="btn btn-sm btn-outline-success" onclick="ackFiltered()" title="Acknowledge all loaded events">Ack loaded</button>
+            <button class="btn btn-sm btn-outline-warning" onclick="tagFiltered()" title="Tag all loaded events">Tag loaded</button>
+            <button class="btn btn-sm btn-outline-info" onclick="findIncidents()">Incidents</button>
+            <button class="btn btn-sm btn-outline-warning" onclick="suggestMerges()" title="Suggest duplicate merges">Merges</button>
+            <button class="btn btn-sm btn-outline-info" onclick="loadHeatmap()" title="24h activity heatmap">Heatmap</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="exportEv('csv')">CSV</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="exportEv('json')">JSON</button>
+            <button class="btn btn-sm btn-outline-danger" onclick="delAllEvents()" title="Delete currently filtered events">Delete filtered</button>
+          </div>
+          <div class="card-body py-2 border-bottom"><div id="evStats" class="d-flex flex-wrap gap-3 small text-muted">stats…</div><div id="heatMap" class="d-flex gap-1 mt-2 align-items-end" style="height:36px"></div></div>
+          <div class="card-body"><div id="evList"></div></div></div>
+        </div>
+
+        <!-- REVIEW -->
+        <div class="tab-pane fade" id="v-review">
+          <div class="card"><div class="card-header d-flex flex-wrap gap-2 align-items-center">
+            <strong>Review</strong><span class="small text-muted">j/k navigate · a acknowledge · x delete · t tag · Enter fullscreen</span>
+            <button class="btn btn-sm btn-outline-primary ms-auto" onclick="loadReview()">Reload</button>
+          </div>
+          <div class="card-body"><div id="revGrid" class="row g-3"></div><div id="revEmpty" class="text-muted">No events loaded — apply a filter in Events, then come back.</div></div></div>
+        </div>
+
+        <!-- PEOPLE -->
+        <div class="tab-pane fade" id="v-people">
+          <div class="card"><div class="card-header d-flex flex-wrap gap-2 align-items-center"><strong>People</strong><span class="small text-muted">face library</span><button class="btn btn-sm btn-outline-primary ms-auto" onclick="loadPeople()">Reload</button></div>
+          <div class="card-body"><div class="row g-3"><div class="col-md-7"><div id="faceList" class="list-group"></div></div>
+          <div class="col-md-5"><div class="mb-2"><label class="form-label small">Register person</label><div class="input-group"><input id="faceName" class="form-control form-control-sm" placeholder="Name"><button class="btn btn-sm btn-primary" onclick="faceRegister()">Add</button></div></div>
+          <div class="mb-2"><label class="form-label small">Recognize test photo</label><input id="faceFile" type="file" accept="image/*" class="form-control form-control-sm"><button class="btn btn-sm btn-outline-secondary mt-1" onclick="faceRecognize()">Recognize</button></div>
+          <pre id="faceOut" class="mini"></pre></div></div></div></div>
+          <div class="card mt-3"><div class="card-header d-flex flex-wrap gap-2 align-items-center"><strong>License plates</strong><button class="btn btn-sm btn-outline-primary ms-auto" onclick="loadPlates()">Reload</button></div><div class="card-body"><div id="plateList" class="list-group"></div></div></div>
+        </div>
+
+        <!-- RECORDINGS -->
+        <div class="tab-pane fade" id="v-record">
+          <div class="row g-3">
+            <div class="col-lg-6"><div class="card"><div class="card-header"><strong>Status</strong></div><div class="card-body"><pre id="recStatus" class="mini">—</pre><button class="btn btn-sm btn-outline-secondary" onclick="loadRecStatus()">Refresh</button></div></div></div>
+            <div class="col-lg-6"><div class="card"><div class="card-header"><strong>Start / Stop</strong></div><div class="card-body">
+              <div class="input-group mb-2"><select id="recCam" class="form-select"></select><input id="recUrl" class="form-control" placeholder="rtsp url (blank = camera source)"></div>
+              <div class="d-flex gap-2"><button class="btn btn-sm btn-success" onclick="recStart()">Start</button><button class="btn btn-sm btn-danger" onclick="recStop()">Stop</button><button class="btn btn-sm btn-outline-primary" onclick="retentionRun()">Run retention</button><button class="btn btn-sm btn-outline-warning" onclick="findGaps()" title="Find missing coverage">Gaps</button></div>
+            </div></div></div>
+          </div>
+          <div class="card mt-3"><div class="card-header"><strong>Snapshot schedules</strong></div><div class="card-body">
+            <div id="snapSchedList" class="list-group mb-2"></div>
+            <div class="input-group"><select id="snapCam" class="form-select"></select><input id="snapCron" class="form-control" placeholder="cron or seconds, e.g. */5 * * * *"><button class="btn btn-sm btn-primary" onclick="addSnapSched()">Add</button><button class="btn btn-sm btn-outline-secondary" onclick="loadSnapSched()">Refresh</button></div>
+          </div></div>
+          <div class="card mt-3"><div class="card-header d-flex gap-2 align-items-center"><strong>Calendar</strong><input id="calMonth" type="month" class="form-control form-control-sm" style="max-width:160px"><button class="btn btn-sm btn-outline-secondary" onclick="loadCal()">Show</button></div><div class="card-body"><div id="calGrid" class="d-flex flex-wrap gap-1"></div></div></div>
+          <div class="card mt-3"><div class="card-header d-flex gap-2 align-items-center"><strong>Snapshot gallery</strong><button class="btn btn-sm btn-outline-secondary" onclick="loadSnapGallery()">Refresh</button></div><div class="card-body"><div id="snapGallery" class="d-flex flex-wrap gap-2"></div></div></div>
+          <div class="card mt-3"><div class="card-header d-flex flex-wrap gap-2 align-items-center"><strong>Media library</strong><button class="btn btn-sm btn-outline-secondary" onclick="loadMedia()">Refresh</button><button class="btn btn-sm btn-outline-danger" onclick="delMediaSel()">Delete selected</button></div><div class="card-body"><div id="medList"></div><div class="mt-2"><button class="btn btn-sm btn-outline-secondary" onclick="loadBoard()">Storyboard</button> <img id="boardImg" class="img-fluid mt-2" style="display:block;max-height:200px" onload="this.style.display='block'" onerror="this.style.display='none'"></div></div></div>
+          <div class="card mt-3"><div class="card-header d-flex gap-2 align-items-center"><strong>Timelapse gallery</strong><button class="btn btn-sm btn-outline-secondary" onclick="loadTlGallery()">Refresh</button></div><div class="card-body"><div id="tlGallery" class="d-flex flex-wrap gap-2"></div></div></div>
+          <div class="card mt-3"><div class="card-header d-flex gap-2 align-items-center"><strong>Plugins</strong><button class="btn btn-sm btn-outline-secondary" onclick="loadPlugins()">Refresh</button></div><div class="card-body"><div id="pluginList" class="list-group"></div></div></div>
+          <div class="card mt-3"><div class="card-header d-flex flex-wrap gap-2 align-items-center"><strong>Bookmarks</strong><button class="btn btn-sm btn-outline-secondary" onclick="loadBookmarks()">Refresh</button><input id="bmLabel" class="form-control form-control-sm" style="max-width:160px" placeholder="label"><button class="btn btn-sm btn-outline-primary" onclick="addBookmark()">Add</button></div><div class="card-body"><div id="bmList" class="list-group"></div></div></div>
+          <div class="card mt-3"><div class="card-header"><strong>Export</strong></div><div class="card-body">
+            <div class="row g-2"><div class="col"><select id="expCam" class="form-select"></select></div><div class="col"><input id="expStart" class="form-control" placeholder="start ISO"></div><div class="col"><input id="expEnd" class="form-control" placeholder="end ISO"></div><div class="col"><button class="btn btn-primary w-100" onclick="doExport()">Export</button></div></div>
+            <div class="d-flex flex-wrap gap-2 mt-2"><button class="btn btn-sm btn-outline-primary" onclick="buildEvidence()">Evidence pack</button><button class="btn btn-sm btn-outline-primary" onclick="dlPdf()">Incident PDF</button><button class="btn btn-sm btn-outline-primary" onclick="buildDigest()">Digest video</button><button class="btn btn-sm btn-outline-success" onclick="createShare()">Share link</button><button class="btn btn-sm btn-outline-secondary" onclick="loadAudioDet()">Sound status</button></div>
+            <div id="shareBox" class="mt-2 small"></div>
+            <pre id="expOut" class="mini mt-2"></pre>
+          </div></div>
+        </div>
+
+        <!-- AUTOMATE -->
+        <div class="tab-pane fade" id="v-auto">
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <div class="card"><div class="card-header"><strong>Standing rules</strong></div><div class="card-body">
+                <div class="input-group mb-2"><input id="ruleText" class="form-control" placeholder="tell me if a red car turns up in the next 6 hours"><button class="btn btn-primary" onclick="addRule()">Add</button></div>
+                <div id="ruleList" class="list-group"></div>
+              </div></div>
+              <div class="card mt-3"><div class="card-header"><strong>Motion zones</strong></div><div class="card-body">
+                <div class="input-group mb-2"><select id="zoneCam" class="form-select"></select><button class="btn btn-outline-secondary" onclick="loadZones()">Load</button><button class="btn btn-outline-primary" onclick="saveZones()">Save</button></div>
+                <canvas id="zoneCanvas" width="640" height="360"></canvas>
+                <div class="small text-muted mt-1">Click to add polygon points. Double-click to close polygon. Toggle include/exclude below.</div>
+                <div class="d-flex gap-2 mt-2 flex-wrap"><select id="zoneMode" class="form-select" style="max-width:160px"><option value="include">include</option><option value="exclude">exclude</option></select><input id="zoneThresh" type="number" class="form-control" style="max-width:140px" value="5" step="0.5"><button class="btn btn-sm btn-success" onclick="addZone()">Add zone</button><button class="btn btn-sm btn-outline-secondary" onclick="undoPt()">Undo point</button><button class="btn btn-sm btn-outline-danger" onclick="clearZones()">Clear</button><select id="zoneTpl" class="form-select form-select-sm" style="max-width:150px"><option value="">Template…</option></select><button class="btn btn-sm btn-outline-primary" onclick="applyZoneTpl()">Apply</button></div>
+                <div id="zoneList" class="mt-2 small"></div>
+                <div class="mt-2"><span class="small text-muted">Sensitivity:</span> <span id="motionPresetRow" class="btn-group btn-group-sm" role="group"></span></div>
+                <details class="mt-2"><summary class="small text-muted">Advanced: edit zones JSON</summary><textarea id="zoneJson" class="form-control form-control-sm mt-1" rows="3" placeholder='[{"points":[[0,0],[100,0],[100,100]],"mode":"include","threshold":5}]'></textarea><button class="btn btn-sm btn-outline-secondary mt-1" onclick="applyZoneJson()">Apply JSON</button></details>
+              </div></div>
+            </div>
+            <div class="col-lg-6">
+              <div class="card"><div class="card-header"><strong>PTZ</strong></div><div class="card-body">
+                <div class="input-group mb-2"><select id="ptzCam" class="form-select" onchange="plibLoad()"></select><button class="btn btn-outline-secondary" onclick="ptzPresets()">Presets</button></div>
+                <div class="d-flex gap-1 flex-wrap"><button class="btn btn-outline-dark" onclick="ptzMove('up')">↑</button><button class="btn btn-outline-dark" onclick="ptzMove('down')">↓</button><button class="btn btn-outline-dark" onclick="ptzMove('left')">←</button><button class="btn btn-outline-dark" onclick="ptzMove('right')">→</button><button class="btn btn-outline-danger" onclick="ptzStop()">Stop</button></div>
+                <div class="input-group mt-2"><input id="plibName" class="form-control form-control-sm" placeholder="Preset name"><input id="plibToken" class="form-control form-control-sm" placeholder="Device token (optional)"><button class="btn btn-sm btn-outline-success" onclick="plibSave()">Save</button></div>
+                <div id="plibList" class="list-group mt-2"></div>
+                <div class="mt-3"><strong class="small">Tours</strong><div id="tourList" class="list-group mt-1"></div>
+                <div class="input-group mt-2"><input id="tourName" class="form-control form-control-sm" placeholder="Tour name"><input id="tourPresets" class="form-control form-control-sm" placeholder="preset tokens, comma separated"><button class="btn btn-sm btn-outline-success" onclick="tourCreate()">Create</button><button class="btn btn-sm btn-outline-secondary" onclick="tourLoad()">Reload</button></div></div>
+                <pre id="ptzOut" class="mini mt-2"></pre>
+              </div></div>
+              <div class="card mt-3"><div class="card-header"><strong>Actions</strong></div><div class="card-body">
+                <div class="input-group"><input id="actUrl" class="form-control" placeholder="https:// webhook"><button class="btn btn-outline-primary" onclick="testWebhook()">Test webhook</button></div>
+              </div></div>
+              <div class="card mt-3"><div class="card-header"><strong>Schedules</strong></div><div class="card-body">
+                <div class="small text-muted mb-1">Recording schedule</div>
+                <div id="recSchedList" class="list-group mb-2"></div>
+                <div class="input-group mb-3"><select id="rsCam" class="form-select form-select-sm"></select><input id="rsRule" class="form-control form-control-sm" placeholder="e.g. weekdays 09:00-17:00 motion"><button class="btn btn-sm btn-outline-success" onclick="rsAdd()">Add</button></div>
+                <div class="small text-muted mb-1">PTZ schedule</div>
+                <div id="ptzSchedList" class="list-group mb-2"></div>
+                <div class="input-group"><select id="psCam" class="form-select form-select-sm"></select><input id="psRule" class="form-control form-control-sm" placeholder="e.g. nightly 23:00 preset 1"><button class="btn btn-sm btn-outline-success" onclick="psAdd()">Add</button></div>
+              </div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SYSTEM -->
+        <div class="tab-pane fade" id="v-system">
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <div class="card"><div class="card-header"><strong>AI provider</strong></div><div class="card-body">
+                <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="aiEnabled"><label class="form-check-label" for="aiEnabled">Enabled</label></div>
+                <div class="mb-2"><label class="form-label small">Base URL</label><input id="aiBase" class="form-control form-control-sm" placeholder="http://localhost:11434/v1"></div>
+                <div class="mb-2"><label class="form-label small">Vision model</label><input id="aiModel" class="form-control form-control-sm" placeholder="moondream"></div>
+                <div class="d-flex gap-2"><button class="btn btn-sm btn-primary" onclick="saveAi()">Save</button><button class="btn btn-sm btn-outline-secondary" onclick="loadAi()">Reload</button><button class="btn btn-sm btn-outline-info" onclick="testAi()">Test</button></div>
+                <pre id="aiBox" class="mini mt-2">—</pre>
+              </div></div>
+              <div class="card mt-3"><div class="card-header"><strong>Storage areas</strong></div><div class="card-body">
+                <div class="d-flex gap-3 align-items-center mb-2"><canvas id="donutCanvas" width="120" height="120"></canvas><div id="donutLegend" class="small"></div></div>
+                <div id="storAreas" class="list-group mb-2"></div>
+                <div class="input-group"><input id="storName" class="form-control form-control-sm" placeholder="area name"><input id="storPath" class="form-control form-control-sm" placeholder="/data/cam"><button class="btn btn-sm btn-primary" onclick="addArea()">Add</button></div>
+                <pre id="storBox" class="mini mt-2">—</pre>
+                <div class="d-flex gap-2 flex-wrap"><input id="quotaArea" class="form-control form-control-sm" style="max-width:90px" placeholder="area id"><input id="quotaBytes" class="form-control form-control-sm" style="max-width:150px" placeholder="max bytes"><button class="btn btn-sm btn-outline-info" onclick="quotaCheck()">Check</button><button class="btn btn-sm btn-outline-warning" onclick="quotaEnforce()">Enforce (dry-run)</button></div>
+                <pre id="quotaOut" class="mini mt-2">—</pre>
+                <div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-outline-info" onclick="cleanupAdvise()">Cleanup advisor</button></div>
+                <div id="cleanupOut" class="mt-2 small"></div>
+              </div></div>
+            </div>
+            <div class="col-lg-6">
+              <div class="card"><div class="card-header"><strong>Relay</strong></div><div class="card-body">
+                <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="relayEnabled"><label class="form-check-label" for="relayEnabled">Enabled</label></div>
+                <div class="mb-2"><input id="relayUrl" class="form-control form-control-sm" placeholder="wss://relay.example.com"></div>
+                <div class="d-flex gap-2"><button class="btn btn-sm btn-primary" onclick="saveRelay()">Save</button><button class="btn btn-sm btn-outline-info" onclick="testRelay()">Test</button></div>
+                <pre id="relayBox" class="mini mt-2">—</pre>
+              </div></div>
+              <div class="card mt-3"><div class="card-header"><strong>System</strong></div><div class="card-body"><pre id="sysBox" class="mini">—</pre><div class="d-flex gap-2 flex-wrap"><button class="btn btn-sm btn-outline-secondary" onclick="loadSys()">Load</button><button class="btn btn-sm btn-outline-info" onclick="loadWatchdog()">Watchdog</button><button class="btn btn-sm btn-outline-primary" onclick="makeBackup()">Backup</button><button class="btn btn-sm btn-outline-primary" onclick="dlDiag()">Diagnostics</button><button class="btn btn-sm btn-outline-secondary" onclick="auditCsv()">Audit CSV</button><button class="btn btn-sm btn-outline-success" onclick="exportCfg()">Config export</button><label class="btn btn-sm btn-outline-success mb-0">Config import<input type="file" id="cfgFile" accept=".json" class="d-none" onchange="importCfg(this)"></label></div><pre id="wdBox" class="mini mt-2">—</pre><div class="input-group input-group-sm mt-2"><input id="auditQ" class="form-control" placeholder="filter action, e.g. camera.delete"><button class="btn btn-outline-secondary" onclick="loadAudit()">Audit log</button></div><div id="auditBox" class="mt-2" style="max-height:220px;overflow:auto"></div><div class="d-flex gap-2 mt-2"><button class="btn btn-sm btn-outline-secondary" onclick="loadLogins()">Login history</button><button class="btn btn-sm btn-outline-secondary" onclick="loadSessions()">Sessions</button></div><div id="loginBox" class="mt-2 small" style="max-height:160px;overflow:auto"></div></div></div>
+              <div class="card mt-3"><div class="card-header"><strong>MQTT / Home Assistant</strong></div><div class="card-body">
+                <div class="input-group mb-2"><input id="mqttUrl" class="form-control form-control-sm" placeholder="mqtt://broker:1883"><input id="mqttTopic" class="form-control form-control-sm" placeholder="topic e.g. vigilcam/test"><button class="btn btn-sm btn-outline-primary" onclick="mqttTest()">Publish test</button><button class="btn btn-sm btn-outline-secondary" onclick="mqttDisc()">HA discovery</button></div>
+                <pre id="mqttBox" class="mini">—</pre>
+              </div></div>
+              <div class="card mt-3"><div class="card-header"><strong>Mentions inbox</strong> <span class="badge text-bg-info" id="mentionBadge">0</span></div><div class="card-body">
+                <div id="mentionList" class="list-group mb-2"></div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="loadMentions()">Refresh</button>
+              </div></div>
+              <div class="card mt-3"><div class="card-header"><strong>Live log</strong></div><div class="card-body"><pre id="wsLog" class="mini">waiting for events…</pre></div></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<div class="toast-wrap" id="toasts"></div>
+<div id="wallOverlay" style="display:none;position:fixed;inset:0;background:#000;z-index:2000;flex-direction:column">
+  <div class="d-flex gap-2 align-items-center p-2 bg-dark text-light">
+    <strong>🧱 VigilCam Wall</strong>
+    <select id="wallGroup" class="form-select form-select-sm" style="max-width:160px" onchange="wallRefresh()"><option value="">All cameras</option></select>
+    <select id="wallCycle" class="form-select form-select-sm" style="max-width:130px" onchange="wallCycle()"><option value="0">No cycle</option><option value="10">Cycle 10s</option><option value="20" selected>Cycle 20s</option><option value="30">Cycle 30s</option></select>
+    <span class="small text-muted" id="wallInfo"></span>
+    <button class="btn btn-sm btn-outline-light ms-auto" onclick="closeWall()">✕ Exit</button>
+  </div>
+  <div class="d-flex justify-content-center align-items-center flex-grow-1" style="min-height:0"><img id="wallImg" class="img-fluid" style="max-height:calc(100vh - 60px);object-fit:contain" alt="live wall"></div>
+</div>
+<div class="modal fade" id="snapModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h6 class="modal-title">Event snapshot</h6><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center"><img id="snapImg" class="img-fluid" alt="snapshot"></div></div></div></div>
+<div class="modal fade" id="mediaModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h6 class="modal-title" id="mediaTitle">Preview</h6><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center" id="mediaBody"></div><div class="modal-footer"><a id="mediaDl" class="btn btn-sm btn-outline-primary" href="#" download>Download</a><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div></div></div></div>
+<div class="modal fade" id="confirmModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h6 class="modal-title" id="confirmTitle">Confirm</h6><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="confirmMsg"></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-danger" id="confirmYes">Delete</button></div></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-async function loadCameras() {
-  const res = await fetch('/api/cameras');
-  const cams = await res.json();
-  const el = document.getElementById('cameraList');
-  el.innerHTML = '';
-  if (!cams.length) {
-    el.innerHTML = '<div class="text-muted p-2">No cameras yet.</div>';
-    return;
-  }
-  for (const c of cams) {
-    const item = document.createElement('div');
-    item.className = 'list-group-item';
-    item.innerHTML = `
-      <div class="d-flex w-100 justify-content-between">
-        <h6 class="mb-1">${c.name} <span class="badge text-bg-secondary">${c.kind}</span></h6>
-        <div>
-          <button class="btn btn-sm btn-outline-success me-1" onclick="runDetect(${c.id})">Detect</button>
-          <button class="btn btn-sm btn-outline-danger" onclick="deleteCamera(${c.id})">Delete</button>
-        </div>
-      </div>
-      <small class="text-muted">${c.source}</small>
-    `;
-    el.appendChild(item);
-  }
-  loadEvents();
+const $ = id => document.getElementById(id);
+function setTheme(t){ document.documentElement.setAttribute('data-bs-theme',t); const dark=t==='dark'; document.body.classList.toggle('bg-dark',dark); document.body.classList.toggle('text-light',dark); document.body.classList.toggle('bg-light',!dark); const sb=$('sidebar'); if(sb){ sb.classList.toggle('bg-white',!dark); sb.classList.toggle('bg-dark',dark); sb.classList.toggle('text-light',dark); } try{ localStorage.setItem('vigilcam-theme',t); }catch(e){} }
+function toggleTheme(){ setTheme(document.documentElement.getAttribute('data-bs-theme')==='dark'?'light':'dark'); }
+let revIdx=0;
+function loadReview(){ const ev=lastEvents||[]; $('revGrid').innerHTML=ev.slice(0,60).map((x,i)=>`<div class="col-md-4"><div class="card h-100 ${i===revIdx?'border-primary border-2':''}" onclick="revIdx=${i};loadReview()" style="cursor:pointer"><img src="/api/events/${x.id}/snapshot" class="card-img-top" style="height:180px;object-fit:cover;background:#111" loading="lazy" onerror="this.style.display='none'"><div class="card-body p-2"><strong>${x.label}</strong> <span class="badge text-bg-secondary">${(x.confidence||0).toFixed?.(2)||''}</span><br><small class="text-muted">${x.created_at||''}</small><div class="btn-group btn-group-sm mt-1"><button class="btn btn-outline-success" onclick="event.stopPropagation();ackEvent(${x.id})">✓</button><button class="btn btn-outline-warning" onclick="event.stopPropagation();tagOne(${x.id})">Tag</button><button class="btn btn-outline-danger" onclick="event.stopPropagation();delEvent(${x.id})">×</button></div></div></div></div>`).join(''); $('revEmpty').style.display=ev.length?'none':'block'; }
+async function tagOne(id){ const t=prompt('Tag:'); if(!t) return; try{ await api(`/api/events/${id}/tags`,{method:'POST',body:JSON.stringify({tags:[t]})}); loadEvents(); loadReview(); }catch(e){ toast(e.message,false);} }
+document.addEventListener('keydown',e=>{ if(!$('v-review').classList.contains('active')) return; const ev=lastEvents||[]; if(!ev.length) return; if(e.key==='j'){ revIdx=Math.min(ev.length-1,revIdx+1); loadReview(); } else if(e.key==='k'){ revIdx=Math.max(0,revIdx-1); loadReview(); } else if(e.key==='a'){ ackEvent(ev[revIdx].id); } else if(e.key==='x'){ delEvent(ev[revIdx].id); } });
+function toast(msg, ok=true){ const t=document.createElement('div'); t.className='alert alert-dismissible '+(ok?'alert-success':'alert-danger'); t.innerHTML=`<button type="button" class="btn-close" data-bs-dismiss="alert"></button><span></span>`; t.querySelector('span').textContent=msg; $('toasts').appendChild(t); setTimeout(()=>t.remove(),4500); }
+async function busy(btn, fn){ const old=btn.innerHTML; btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm"></span>'; try{ return await fn(); }finally{ btn.disabled=false; btn.innerHTML=old; } }
+async function api(path, opts={}){ const r=await fetch(path,{cache:'no-store',headers:{'Content-Type':'application/json'},...opts}); if(!r.ok){ const txt=await r.text(); throw new Error(r.status+' '+txt.slice(0,200)); } const ct=r.headers.get('content-type')||''; return ct.includes('json')?r.json():r.text(); }
+async function refreshAll(){ await Promise.allSettled([loadCameras(),loadEvents(),loadRecStatus(),loadSys(),loadActivity()]); }
+let CAMS=[]; let healthMap={};
+async function loadHealthMap(){ try{ const h=await api('/api/cameras/health'); (Array.isArray(h)?h:[]).forEach(x=>{ healthMap[x.camera_id??x.id]=x.status||x.state; }); }catch(e){} try{ const u=await api('/api/uptime/summary'); const per=u.per_camera||u.cameras||{}; Object.entries(per).forEach(([id,v])=>{ const pct=v.uptime_percent??v.percent; if(pct!=null) healthMap['up_'+id]=Math.round(pct)+'%'; }); }catch(e){} }
+function filteredCams(){
+  let cams=CAMS.slice();
+  const q=($('camSearch')?.value||'').toLowerCase(); if(q) cams=cams.filter(c=>(c.name+c.source+c.kind).toLowerCase().includes(q));
+  const gf=$('gridGroup').value||''; if(gf) cams=cams.filter(c=>(c.group||c.group_id||'')==gf);
+  return {all: CAMS, cams, gf};
 }
-
-async function deleteCamera(id) {
-  await fetch(`/api/cameras/${id}`, { method: 'DELETE' });
-  loadCameras();
+function renderCamList(){
+  const {cams} = filteredCams();
+  $('navCount').textContent=cams.length+' cameras'; $('mCams').textContent=cams.length; const _hc=$('mCamsHero'); if(_hc) _hc.textContent=cams.length;
+  $('camList').innerHTML=cams.map(c=>`<div class="list-group-item"><div class="d-flex justify-content-between align-items-center"><div class="d-flex gap-2 align-items-start"><input type="checkbox" class="form-check-input mt-1 camSel" value="${c.id}" onchange="updateSelCount()"><div><strong>${c.name}</strong> <span class="badge text-bg-secondary">${c.kind}</span> <span class="badge ${c.recording_mode==='always'?'text-bg-danger':c.recording_mode==='never'?'text-bg-secondary':'text-bg-info'}">${c.recording_mode||'motion'}</span>${healthMap['up_'+c.id]?` <span class="badge text-bg-light border" title="uptime">${healthMap['up_'+c.id]}</span>`:''}<br><small class="text-muted">${c.source||''}</small><br><small><a href="#/cameras/${c.slug||c.id}" title="Deep link">/${c.slug||c.id}</a> <a href="#" onclick="navigator.clipboard.writeText(location.origin+location.pathname+'#/cameras/${c.slug||c.id}');toast('link copied');return false;" title="Copy link">⧉</a></small></div></div><div class="btn-group btn-group-sm"><button class="btn btn-outline-success" onclick="detect(${c.id},this)">Detect</button><button class="btn btn-outline-info" onclick="reprobe(${c.id})">Probe</button><button class="btn btn-outline-warning" onclick="tamperCheck(${c.id},this)" title="Tamper check vs baseline">Tamper</button><button class="btn btn-outline-secondary" onclick="editCam(${c.id})">Edit</button><button class="btn btn-outline-danger" onclick="delCam(${c.id},this)">Del</button></div></div><div class="d-flex gap-3 mt-1 small"><label class="form-check"><input type="checkbox" class="form-check-input" ${c.enabled===false?'':'checked'} onchange="toggleCam(${c.id},'enabled',this.checked)"> enabled</label><label class="form-check"><input type="checkbox" class="form-check-input" ${c.recording_enabled===false?'':'checked'} onchange="toggleCam(${c.id},'recording_enabled',this.checked)"> recording</label><label class="form-check"><input type="checkbox" class="form-check-input" ${c.detection_enabled===false?'':'checked'} onchange="toggleCam(${c.id},'detection_enabled',this.checked)"> detection</label></div></div>`).join('')||'<div class="text-muted p-2">No cameras match.</div>';
+  const _box=$('camSelectAll'); if(_box) _box.checked=false; updateSelCount();
 }
-
-async function runDetect(id) {
-  const res = await fetch(`/api/cameras/${id}/detect`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
-  const data = await res.json();
-  alert(`${data.detections.length} detections: ` + data.detections.map(d=>d.label).join(', '));
-  loadCameras();
+async function heroRefresh(){ try{ const t=Date.now(); const ids=(typeof CAMS!=='undefined'?CAMS:[]).map(c=>c.id).join(','); $('heroMosaic').src='/api/mosaic?width=960&camera_ids='+encodeURIComponent(ids)+'&t='+t; $('heroTime').textContent=new Date().toLocaleTimeString(); const r=await api('/api/cameras'); $('heroCount').textContent=r.length; }catch(e){} }
+async function loadCameras(){
+  try{
+    CAMS=await api('/api/cameras');
+    renderCamList();
+    // Health/badges load in background so the list never waits on them.
+    loadHealthMap().then(()=>renderCamList());
+    let cams=CAMS.slice();
+    const {cams: fcams, gf} = filteredCams(); cams = fcams;
+    $('gridGroup').innerHTML='<option value="">All groups</option>'+[...new Set(CAMS.map(c=>c.group||c.group_id).filter(Boolean))].map(g=>`<option value="${g}"${gf===g?' selected':''}>${g}</option>`).join('');
+    const cols=+$('gridCols').value||3, cw=cols===2?'col-md-6':cols===4?'col-md-3':'col-md-4';
+    const opts=cams.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    $('zoneCam').innerHTML=opts; $('ptzCam').innerHTML=opts; $('snapCam').innerHTML=opts; $('rsCam').innerHTML=opts; $('psCam').innerHTML=opts; $('fpAddCam').innerHTML=opts;
+    $('recCam').innerHTML=opts; $('expCam').innerHTML=opts;
+    $('eventFilterCamera').innerHTML='<option value="">All cameras</option>'+cams.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    // live grid
+    const activeOnly=$('activeOnly').checked;
+    let ids=new Set(cams.map(c=>c.id));
+    try{ const act=await api('/api/cameras/activity?seconds=120'); if(activeOnly&&act.active?.length){ ids=new Set(act.active.map(a=>a.id||a.camera_id)); } $('mActive').textContent=act.active?.length??'—'; const _ha=$('mActiveHero'); if(_ha) _ha.textContent=act.active?.length??'—'; $('activityBox').textContent=(act.active||[]).map(a=>a.name||a.id).join(', ')||'idle'; }catch(e){}
+    $('liveGrid').innerHTML=cams.filter(c=>ids.has(c.id)).map(c=>{ const h=(healthMap[c.id]||''); const dot=h==='online'?'on':h==='offline'?'off':''; return `<div class="${cw}"><div class="card cam-card"><img loading="lazy" src="/api/streams/${c.id}/mjpeg?frames=1&fps=1&t=${Date.now()}" onerror="this.style.display='none'"><div class="card-body p-2 d-flex justify-content-between align-items-center"><div><span class="dot ${dot}"></span> <strong>${c.name}</strong><br><small class="text-muted">${c.kind} · ${c.source||''}</small></div><div class="btn-group btn-group-sm"><button class="btn btn-outline-secondary" onclick="navigator.clipboard.writeText('${(c.source||'').replace(/'/g,'')}').then(()=>toast('URL copied'))" title="Copy stream URL">⧉</button><button class="btn btn-outline-secondary" onclick="snapNow(${c.id})" title="Save snapshot now">📷</button><button class="btn btn-outline-warning" onclick="talkTo(${c.id},this)" title="Hold to talk (2s mic)">🎤</button><button class="btn btn-outline-primary" onclick="detect(${c.id},this)">Detect</button></div></div></div></div>`; }).join('');
+    $('liveEmpty').style.display=cams.length?'none':'block';
+  }catch(e){ toast('cameras: '+e.message,false); }
 }
-
-async function loadEvents() {
-  const res = await fetch('/api/cameras/events/recent?limit=20');
-  const events = await res.json();
-  const el = document.getElementById('eventList');
-  el.innerHTML = events.length ? events.map(e => `<div>${new Date(e.created_at).toLocaleString()} – ${e.label} (${(e.confidence||0).toFixed(2)})</div>`).join('') : 'No events yet.';
-}
-
-document.getElementById('addCameraForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const body = Object.fromEntries(fd.entries());
-  body.enabled = true; body.recording_enabled = true; body.detection_enabled = true;
-  await fetch('/api/cameras', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-  e.target.reset();
-  loadCameras();
+function resetCamForm(){ $('camForm').reset(); $('fId').value=''; $('camFormTitle').textContent='Add camera'; }
+function routeHash(){ const m=(location.hash||'').match(/^#\/cameras\/([\w-]+)/); if(m){ const slug=m[1]; document.querySelector('[data-bs-target="#v-cameras"]')?.click(); const tryOpen=()=>{ const cam=CAMS.find(c=>String(c.slug)===slug||String(c.id)===slug); if(cam){ editCam(cam.id); } else setTimeout(tryOpen,800); }; setTimeout(tryOpen,600); return; } const l=(location.hash||'').match(/^#\/layouts\/([\w-]+)/); if(l){ document.querySelector('[data-bs-target="#v-dashboard"]')?.click(); const tryL=()=>{ const opts=[...$('fpLayout').options]; const o=opts.find(o=>o.value==l[1]||o.text.toLowerCase().replace(/[^a-z0-9]+/g,'-')===l[1]); if(o){ $('fpLayout').value=o.value; loadFloorplan(); } else setTimeout(tryL,800); }; setTimeout(tryL,600); } }
+window.addEventListener('hashchange',routeHash);
+async function editCam(id){ const c=await api('/api/cameras/'+id); $('fId').value=c.id; $('fName').value=c.name; $('fKind').value=c.kind; $('fSource').value=c.source; $('fUser').value=c.username||''; if($('fRecMode')) $('fRecMode').value=c.recording_mode||'motion'; if($('fAlert')) $('fAlert').value=c.alert_enabled===false||c.alert_enabled===0?'0':'1'; $('camFormTitle').textContent='Edit camera'; }
+async function delCam(id,btn){ const cam=CAMS.find(c=>c.id==id); if(!await confirmDlg('Delete camera',`Delete camera "${cam?.name||id}"? Recordings on disk are kept.`))return; try{ if(btn) await busy(btn,async()=>{ await api('/api/cameras/'+id,{method:'DELETE'}); }); else await api('/api/cameras/'+id,{method:'DELETE'}); CAMS=CAMS.filter(c=>c.id!==id); toast('camera deleted'); loadCameras(); }catch(e){ toast('delete failed: '+e.message,false); loadCameras(); } }
+function selCamIds(){ return [...document.querySelectorAll('.camSel:checked')].map(b=>+b.value); }
+function updateSelCount(){ const n=selCamIds().length; $('camSelCount').textContent=n?`(${n} selected)`:''; const all=document.querySelectorAll('.camSel'); const box=$('camSelectAll'); if(box) box.checked=all.length>0&&n===all.length; }
+function toggleAllCams(on){ document.querySelectorAll('.camSel').forEach(b=>{ b.checked=on; }); updateSelCount(); }
+async function bulkCams(enable){ const ids=selCamIds(); if(!ids.length){ toast('select cameras first',false); return; } try{ await api(`/api/cameras/bulk-${enable?'enable':'disable'}`,{method:'POST',body:JSON.stringify({camera_ids:ids})}); toast(`${enable?'enabled':'disabled'} ${ids.length}`); loadCameras(); }catch(e){ toast(e.message,false);} }
+async function delSelCams(){ const ids=selCamIds(); if(!ids.length){ toast('select cameras first',false); return; } if(!await confirmDlg('Delete selected',`Delete ${ids.length} selected cameras? Recordings on disk are kept.`,'Delete'))return; try{ const r=await api('/api/cameras/bulk-delete',{method:'POST',body:JSON.stringify({camera_ids:ids})}); const n=r.deleted_count??r.deleted?.length??ids.length; CAMS=CAMS.filter(c=>!ids.includes(c.id)); toast(`deleted ${n}`); loadCameras(); }catch(e){ toast(e.message,false);} }
+async function delAllCams(){ const n=CAMS.length; if(!n){ toast('no cameras'); return; } if(!await confirmDlg('Delete ALL cameras',`Delete ALL ${n} cameras? This cannot be undone. Recordings on disk are kept.`,'Delete all'))return; try{ const r=await api('/api/cameras',{method:'DELETE'}); CAMS=[]; toast(`deleted ${r.deleted_count??r.deleted?.length??n} cameras`); loadCameras(); }catch(e){ toast(e.message,false);} }
+async function reprobe(id){ try{ toast('probing…'); const r=await api(`/api/cameras/${id}/reprobe`,{method:'POST',body:'{}'}); toast('probe ok'); }catch(e){ toast(e.message,false);} }
+async function loadFpLayouts(){ try{ const ls=await api('/api/layouts'); const list=Array.isArray(ls)?ls:(ls.layouts||[]); $('fpLayout').innerHTML='<option value="">Select layout…</option>'+list.map(l=>`<option value="${l.id}">${l.name||l.id}</option>`).join(''); }catch(e){} }
+async function loadFloorplan(){ const id=$('fpLayout').value; if(!id){ $('fpImg').style.display='none'; $('fpDots').innerHTML=''; $('fpEmpty').style.display='block'; return; } try{ const l=await api('/api/layouts/'+id); const data=l.json_layout||l.layout||l.json||l; const pos=data.camera_positions||data.positions||data.cameras||[]; fpPos=pos.map(p=>({camera_id:p.camera_id??p.id,x:p.x??p.left,y:p.y??p.top})).filter(p=>p.x!=null); const img=data.image||data.floorplan||data.background; if(img){ $('fpImg').src=img; $('fpImg').style.display='block'; } renderFpDots(); $('fpEmpty').style.display=fpPos.length?'none':'block'; }catch(e){ toast(e.message,false);} }
+let fpPos=[], fpEditing=false, fpDrag=null;
+function renderFpDots(){ $('fpDots').innerHTML=fpPos.map((p,i)=>{ const cam=CAMS.find(c=>c.id==p.camera_id); const h=p.camera_id!=null?healthMap[p.camera_id]:''; return `<span title="${cam?cam.name:'cam '+p.camera_id}" style="position:absolute;left:${p.x}%;top:${p.y}%;width:14px;height:14px;border-radius:50%;background:${h==='offline'?'#dc3545':'#198754'};border:2px solid #fff;transform:translate(-50%,-50%);cursor:${fpEditing?'move':'default'}" data-fp="${i}"></span>`; }).join(''); if(fpEditing) drawFpCanvas(); }
+function fpToggleEdit(){ fpEditing=!fpEditing; $('fpEditBtn').textContent=fpEditing?'Done editing':'Edit positions'; $('fpEditBtn').classList.toggle('btn-primary',fpEditing); const cv=$('fpCanvas'); if(fpEditing){ $('fpImg').style.display='none'; $('fpDots').innerHTML=''; cv.style.display='block'; drawFpCanvas(); } else { cv.style.display='none'; const img=$('fpImg').src; if(img) $('fpImg').style.display='block'; renderFpDots(); } }
+function fpCanvasXY(e){ const r=$('fpCanvas').getBoundingClientRect(); return [Math.round((e.clientX-r.left)/r.width*1000)/10, Math.round((e.clientY-r.top)/r.height*1000)/10]; }
+function drawFpCanvas(){ const cv=$('fpCanvas'), ctx=cv.getContext('2d'); ctx.fillStyle='#151515'; ctx.fillRect(0,0,800,450); ctx.strokeStyle='#333'; for(let x=0;x<=800;x+=80){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,450); ctx.stroke(); } for(let y=0;y<=450;y+=90){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(800,y); ctx.stroke(); } fpPos.forEach((p,i)=>{ const px=p.x/100*800, py=p.y/100*450; ctx.fillStyle='#0d6efd'; ctx.beginPath(); ctx.arc(px,py,10,0,7); ctx.fill(); ctx.fillStyle='#fff'; ctx.font='10px sans-serif'; ctx.textAlign='center'; const cam=CAMS.find(c=>c.id==p.camera_id); ctx.fillText(cam?cam.name.slice(0,8):p.camera_id,px,py-14); }); }
+function fpNearest(e,rad){ const [x,y]=fpCanvasXY(e); let best=null,bd=1e9; fpPos.forEach((p,i)=>{ const d=Math.hypot(p.x-x,p.y-y); if(d<bd){ bd=d; best=i; } }); return bd<rad?best:null; }
+async function fpSave(){ const id=$('fpLayout').value; if(!id){ toast('pick a layout first',false); return; } try{ await api('/api/layouts/'+id,{method:'PATCH',body:JSON.stringify({json_layout:{camera_positions:fpPos}})}); toast('layout saved'); if(fpEditing) fpToggleEdit(); loadFloorplan(); }catch(e){ toast(e.message,false);} }
+document.addEventListener('DOMContentLoaded',()=>{ const cv=document.getElementById('fpCanvas'); if(!cv) return;
+cv.addEventListener('mousedown',e=>{ if(!fpEditing) return; const i=fpNearest(e,4); if(i!=null){ fpDrag=i; } });
+cv.addEventListener('mousemove',e=>{ if(!fpEditing||fpDrag==null) return; const [x,y]=fpCanvasXY(e); fpPos[fpDrag].x=Math.max(0,Math.min(100,x)); fpPos[fpDrag].y=Math.max(0,Math.min(100,y)); drawFpCanvas(); });
+cv.addEventListener('mouseup',e=>{ if(!fpEditing) return; if(fpDrag!=null){ fpDrag=null; return; } const camId=+$('fpAddCam').value; if(!camId){ toast('select a camera to place',false); return; } const [x,y]=fpCanvasXY(e); fpPos.push({camera_id:camId,x,y}); drawFpCanvas(); });
 });
-
-document.getElementById('onvifForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  const res = await fetch('/api/onvif/probe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ host: fd.get('host'), port: Number(fd.get('port')) }) });
-  const data = await res.json();
-  document.getElementById('onvifResult').textContent = JSON.stringify(data, null, 2);
-});
-
-loadCameras();
+async function tamperCheck(id,btn){ const grab=async()=>fetch(`/api/streams/${id}/mjpeg?frames=1`).then(r=>r.blob()).then(b=>new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.readAsDataURL(b); })); const run=async()=>{ let ref=null; try{ ref=await api(`/api/tamper/reference/${id}`); }catch(e){} if(!ref||ref.missing){ const img=await grab(); await api(`/api/tamper/reference/${id}`,{method:'POST',body:JSON.stringify({frame:img})}); return 'baseline set — click again to check'; } const img=await grab(); const r=await api(`/api/tamper/compare/${id}`,{method:'POST',body:JSON.stringify({frame:img})}); return r.tampered?'TAMPERED! drift='+r.drift:'no tamper'; }; try{ if(btn) await busy(btn,async()=>{ toast(await run()); }); else toast(await run()); }catch(e){ toast(e.message,false);} }
+function exportPresets(){ window.open('/api/preset-io/export','_blank'); }
+async function importPresets(inp){ const f=inp.files[0]; if(!f) return; try{ const data=JSON.parse(await f.text()); const r=await api('/api/preset-io/import',{method:'POST',body:JSON.stringify(data.presets?data:{presets:data})}); toast('imported '+(r.imported??r.count??'?')); loadCameras(); }catch(e){ toast(e.message,false);} inp.value=''; }
+$('camForm').addEventListener('submit',async e=>{ e.preventDefault(); const id=$('fId').value; const body={name:$('fName').value,kind:$('fKind').value,source:$('fSource').value||$('fUsb').value,username:$('fUser').value||null,password:$('fPass').value||null,recording_mode:$('fRecMode').value,alert_enabled:$('fAlert').value==='1'}; try{ if(id){ await api('/api/cameras/'+id,{method:'PATCH',body:JSON.stringify(body)});} else { await api('/api/cameras',{method:'POST',body:JSON.stringify(body)});} resetCamForm(); loadCameras(); toast('saved'); }catch(err){ toast(err.message,false);} });
+async function toggleCam(id,field,val){ try{ await api('/api/cameras/'+id,{method:'PATCH',body:JSON.stringify({[field]:val})}); }catch(e){ toast(e.message,false); loadCameras(); } }
+let micRec=null, micChunks=[];
+async function talkTo(id,btn){ try{
+  if(micRec&&micRec.state==='recording'){ micRec.stop(); return; }
+  const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  micRec=new MediaRecorder(stream); micChunks=[];
+  micRec.ondataavailable=e=>{ if(e.data.size) micChunks.push(e.data); };
+  micRec.onstop=async()=>{ stream.getTracks().forEach(t=>t.stop()); const blob=new Blob(micChunks,{type:micRec.mimeType||'audio/webm'}); const b64=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); }); try{ await api('/api/talk/'+id,{method:'POST',body:JSON.stringify({audio_base64:b64})}); toast('voice sent'); }catch(e){ toast(e.message,false);} btn.classList.remove('btn-danger'); };
+  micRec.start(); btn.classList.add('btn-danger'); toast('recording 2s…'); setTimeout(()=>{ if(micRec&&micRec.state==='recording') micRec.stop(); },2000);
+ }catch(e){ toast('mic unavailable: '+e.message,false); } }
+async function detect(id,btn){ try{ if(btn) await busy(btn,async()=>{ const r=await api(`/api/cameras/${id}/detect`,{method:'POST',body:'{}'}); toast(r.detections.length+' detections'); }); else { const r=await api(`/api/cameras/${id}/detect`,{method:'POST',body:'{}'}); toast(r.detections.length+' detections'); } loadEvents(); }catch(e){ toast(e.message,false);} }
+async function loadDiscovery(){ try{ const vo=$('verifiedOnly')?.checked; $('discList').innerHTML='<div class="text-muted small p-2">Scanning… verifying ONVIF/RTSP handshakes.</div>'; const d=await api('/api/discovery/network'+(vo?'?verified_only=true':'')); window._lastDiscovery=d; const show=d.filter(x=>!vo||x.verified); $('discList').innerHTML=show.map((x,i)=>{ const vBadge=x.verified?`<span class="badge text-bg-success">verified</span>`:`<span class="badge text-bg-secondary">unverified</span>`; const addBtn=(!x.already_added&&(!vo||x.verified))?`<button class="btn btn-sm btn-primary" onclick="addDiscovered(\'${x.ip}\')">Add</button>`:; return `<div class="list-group-item"><div class="d-flex justify-content-between align-items-center"><small>${x.ip} · ${(x.protocols||[]).join(", ")||""} ${vBadge} ${x.already_added?"· added":""}</small><span class="btn-group btn-group-sm"><button class="btn btn-outline-info" onclick="probeDiscovered(\'${x.ip}\',${i})">Probe</button>${addBtn}</span></div><div id="discDetail${i}"></div></div>`; }).join("")||'<div class="text-muted small p-2">No cameras found.</div>'; }catch(e){ $('discList').innerHTML='<div class="text-danger small p-2">Discovery unavailable.</div>'; } }
+async function probeDiscovered(ip,i){ const box=$('discDetail'+i); if(!box) return; box.innerHTML='<span class="text-muted">Probing ONVIF…</span>'; try{ const r=await api('/api/onvif/probe_device',{method:'POST',body:JSON.stringify({ip:ip,username:($('fUser')&&$('fUser').value)||'admin',password:($('fPass')&&$('fPass').value)||'admin'})}); const dev=r.device||{}; const nm=((dev.manufacturer||'')+' '+(dev.model||'')).trim(); box.innerHTML='Manufacturer: <b>'+(dev.manufacturer||'?')+'</b> · Model: <b>'+(dev.model||'?')+'</b> · FW: '+(dev.firmware_version||'?'); }catch(e){ box.innerHTML='<span class="text-danger">Probe failed: device may need credentials or be offline.</span>'; } }
+async function addDiscovered(ip){ await api('/api/cameras',{method:'POST',body:JSON.stringify({name:ip,kind:'onvif',source:ip})}); loadCameras(); }
+async function importAllNew(){ try{ const d=window._lastDiscovery||await api('/api/discovery/network'); const fresh=d.filter(x=>!x.already_added&&x.verified); if(!fresh.length){ toast('no new verified cameras'); return; } const r=await api('/api/bulk-import/import',{method:'POST',body:JSON.stringify({devices:fresh})}); toast('imported '+(r.created?.length??r.imported??'?')); loadCameras(); loadDiscovery(); }catch(e){ toast(e.message,false);} }
+async function snapNow(id){ try{ const r=await api('/api/snapshot_now/capture',{method:'POST',body:JSON.stringify({camera_id:id})}); toast('snapshot saved'); }catch(e){ toast(e.message,false);} }
+async function suggestName(){ const host=$('onvifIp').value||($('fSource').value.match(/(\d+\.\d+\.\d+\.\d+)/)||[])[1]||''; if(!host){ toast('enter camera IP first',false); return; } try{ const r=await api('/api/name-suggest/suggest?ip='+encodeURIComponent(host)); const s=(r.suggestions||r.names||[])[0]; if(s){ $('fName').value=s; toast('suggested: '+s); } else toast('no suggestion',false); }catch(e){ toast(e.message,false);} }
+async function probeOnvif(){ try{ document.querySelectorAll('.probe-add-btn').forEach(b=>b.remove()); $('onvifOut').textContent='Probing…'; const r=await api('/api/onvif/probe_device',{method:'POST',body:JSON.stringify({ip:$('onvifIp').value,username:$('fUser').value||'admin',password:$('fPass').value||'admin'})}); $('onvifOut').textContent=JSON.stringify(r,null,2); const b=document.createElement('button'); b.className='btn btn-sm btn-success mt-2 probe-add-btn'; b.textContent='Add probed camera'; b.onclick=async()=>{ await api('/api/cameras',{method:'POST',body:JSON.stringify({name:$('onvifIp').value,kind:'onvif',source:$('onvifIp').value,username:$('fUser').value||null,password:$('fPass').value||null})}); loadCameras(); toast('camera added'); }; $('onvifOut').after(b); }catch(e){ $('onvifOut').textContent='Error: '+e.message; } }
+async function loadUsb(){ try{ const d=await api('/api/devices/usb'); $('fUsb').innerHTML='<option value="">—</option>'+d.map(x=>`<option value="${x.path||x.name}">${x.name||x.path}</option>`).join(''); }catch(e){} }
+let lastEvents=[];
+async function loadPlates(){ try{ const r=await api('/api/license_plate?limit=50'); const list=Array.isArray(r)?r:(r.plates||r.items||[]); $('plateList').innerHTML=list.slice(0,50).map(x=>`<div class="list-group-item py-1 d-flex justify-content-between"><small><strong>${x.plate||x.text||x.number||x.id}</strong> <span class="text-muted">${x.camera_id||x.camera||''} ${x.created_at||x.at||''} ${(x.confidence||'') && ('('+x.confidence+')')}</span></small></div>`).join('')||'<div class="text-muted small">No plates recognized yet.</div>'; }catch(e){ $('plateList').innerHTML='<div class="text-danger small">Unavailable.</div>'; } }
+async function loadPeople(){ try{ const r=await api('/api/face'); const list=Array.isArray(r)?r:(r.people||r.faces||[]); $('faceList').innerHTML=list.map(p=>{ const nm=p.name||p.label||p.person; const id=p.id??p.face_id??nm; return `<div class="list-group-item d-flex justify-content-between align-items-center py-1"><span>${nm}</span><button class="btn btn-sm btn-outline-danger" onclick="faceDel('${id}')">×</button></div>`; }).join('')||'<div class="text-muted small">No enrolled faces.</div>'; }catch(e){ $('faceList').innerHTML='<div class="text-danger small">Unavailable.</div>'; } }
+async function faceRegister(){ const n=$('faceName').value.trim(); if(!n){ toast('name required',false); return; } try{ await api('/api/face/register',{method:'POST',body:JSON.stringify({name:n})}); $('faceName').value=''; loadPeople(); toast('registered'); }catch(e){ toast(e.message,false);} }
+async function faceDel(id){ if(!await confirmDlg('Delete face','Remove this enrolled face?'))return; try{ await api('/api/face/'+encodeURIComponent(id),{method:'DELETE'}); loadPeople(); }catch(e){ toast(e.message,false);} }
+function readFileB64(inp){ return new Promise((res,rej)=>{ const f=inp.files[0]; if(!f) return rej(new Error('no file')); const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(',')[1]); fr.onerror=rej; fr.readAsDataURL(f); }); }
+async function faceRecognize(){ try{ const b64=await readFileB64($('faceFile')); const r=await api('/api/face/recognize',{method:'POST',body:JSON.stringify({image_base64:b64})}); $('faceOut').textContent=JSON.stringify(r,null,2).slice(0,1200); }catch(e){ $('faceOut').textContent='Error: '+e.message; } }
+async function loadEvents(){ try{ loadUnacked(); const q=new URLSearchParams({label:$('eLabel').value,tag:$('eTag').value,camera_id:$('eventFilterCamera').value||''}); const ev=await api('/api/events?'+q.toString()); lastEvents=ev; $('mEvents').textContent=ev.length; const _he=$('mEventsHero'); if(_he) _he.textContent=ev.length; loadEventStats(); $('evList').innerHTML=ev.slice(0,100).map(x=>`<div class="border-bottom py-1 d-flex gap-2 align-items-center"><img class="event-thumb" loading="lazy" src="/api/events/${x.id}/snapshot" onerror="this.style.display='none'" onclick="showSnap(${x.id})" style="cursor:pointer" title="View snapshot"><div class="flex-grow-1"><strong>${x.label}</strong> <small class="text-muted">${x.created_at||''} · ${(x.confidence||0).toFixed?.(2)||''}</small><br><small>${(x.tags||[]).join(' ')}</small> <a href="#" onclick="toggleNotes(${x.id});return false;" class="small">notes</a><div id="notes-${x.id}" class="small" style="display:none"></div></div><div class="btn-group btn-group-sm"><button class="btn btn-outline-success" onclick="ackEvent(${x.id})" title="Acknowledge">✓</button><button class="btn btn-outline-danger" onclick="delEvent(${x.id})" title="Delete">×</button></div></div>`).join('')||'<div class="text-muted">No events. Run Detect on a camera to generate some.</div>'; }catch(e){ toast(e.message,false);} }
+async function ackFiltered(){ if(!lastEvents.length){ toast('no events loaded'); return; } try{ const r=await api('/api/events/bulk-acknowledge',{method:'POST',body:JSON.stringify({event_ids:lastEvents.map(e=>e.id)})}); toast('acked '+(r.updated_count??lastEvents.length)); }catch(e){ toast(e.message,false);} }
+async function tagFiltered(){ if(!lastEvents.length){ toast('no events loaded'); return; } const tag=prompt('Tag to apply to '+lastEvents.length+' events:'); if(!tag) return; try{ const r=await api('/api/events/bulk-tag',{method:'POST',body:JSON.stringify({event_ids:lastEvents.map(e=>e.id),tags:[tag]})}); toast('tagged '+(r.updated_count??lastEvents.length)); loadEvents(); }catch(e){ toast(e.message,false);} }
+async function delEvent(id){ if(!await confirmDlg('Delete event','Delete this event?'))return; try{ await api('/api/events/'+id,{method:'DELETE'}); loadEvents(); }catch(e){ toast(e.message,false);} }
+async function findIncidents(){ try{ const r=await api('/api/incidents/correlate',{method:'POST',body:'{}'}); const list=r.incidents||r.groups||r||[]; toast(Array.isArray(list)?list.length+' incidents':'done'); if(Array.isArray(list)&&list.length){ $('evStats').innerHTML=list.slice(0,6).map(g=>{ const evs=g.events||g.event_ids||[]; const cams=[...new Set((g.cameras||[]))]; return `<span class="badge text-bg-warning" title="${evs.length} events · cams ${cams.join(',')}">${evs.length}ev/${cams.length}cam</span>`; }).join(' '); } }catch(e){ toast(e.message,false);} }
+async function suggestMerges(){ try{ const r=await api('/api/events/merge/suggest',{method:'POST',body:'{}'}); const list=r.suggestions||r.groups||r||[]; if(Array.isArray(list)&&list.length){ $('evStats').innerHTML=list.slice(0,6).map(g=>{ const ids=g.event_ids||g.events||[]; return `<span class="badge text-bg-secondary" title="${ids.join(',')}">${ids.length} dupes <a href="#" onclick="doMerge([${ids.join(',')}]);return false;">merge</a></span>`; }).join(' '); toast(list.length+' merge groups'); } else toast('no duplicates found'); }catch(e){ toast(e.message,false);} }
+async function doMerge(ids){ if(!confirm(`Merge ${ids.length} events?`))return; try{ await api('/api/events/merge',{method:'POST',body:JSON.stringify({event_ids:ids})}); toast('merged'); loadEvents(); }catch(e){ toast(e.message,false);} }
+async function ackEvent(id){ try{ await api(`/api/events/${id}/acknowledge`,{method:'POST',body:'{}'}); toast('acknowledged'); loadEvents(); }catch(e){ toast(e.message,false);} }
+async function delAllEvents(){ const label=$('eLabel').value, tag=$('eTag').value, cam=$('eventFilterCamera').value; const scope=(label||tag||cam)?'filtered events':'ALL events'; if(!confirm(`Delete ${scope}? This cannot be undone.`))return; try{ const q=new URLSearchParams({label,tag,camera_id:cam}); const r=await api('/api/events?'+q.toString(),{method:'DELETE'}); const n=(r.deleted_events||r.deleted||[]).length; toast(`deleted ${n} events`); loadEvents(); }catch(e){ toast(e.message,false);} }
+async function toggleNotes(id){ const box=$('notes-'+id); if(!box) return; if(box.style.display!=='none'){ box.style.display='none'; return; } box.style.display='block'; try{ const n=await api(`/api/events/${id}/notes`); const list=Array.isArray(n)?n:(n.notes||[]); box.innerHTML=(list.map(x=>`<div>• ${x.text||x.note||''} <span class="text-muted">(${x.author||''})</span></div>`).join('')||'<span class="text-muted">No notes.</span>')+`<div class="input-group input-group-sm mt-1"><input id="note-in-${id}" class="form-control" placeholder="Add note"><button class="btn btn-outline-primary" onclick="addNote(${id})">Add</button></div>`; }catch(e){ box.innerHTML='<span class="text-danger">Notes unavailable.</span>'; } }
+async function addNote(id){ const inp=$('note-in-'+id); if(!inp||!inp.value.trim()) return; try{ await api(`/api/events/${id}/notes`,{method:'POST',body:JSON.stringify({text:inp.value})}); toggleNotes(id); toggleNotes(id); }catch(e){ toast(e.message,false);} }
+function showSnap(id){ $('snapImg').src='/api/events/'+id+'/snapshot'; new bootstrap.Modal($('snapModal')).show(); }
+function exportEv(f){ window.open('/api/events/export?format='+f,'_blank'); }
+async function loadUnacked(){ try{ const r=await api('/api/events/unacked?limit=1'); const n=r.unacked_count??r.unacked_total??r.pending_count??r.total??(Array.isArray(r.items||r.queue||r.events)?(r.items||r.queue||r.events).length:0); $('unackBadge').textContent=n; $('unackBadge').className='badge '+(n?'text-bg-warning':'text-bg-success'); }catch(e){} }
+async function loadHeatmap(){ try{ const cam=$('eventFilterCamera').value||''; const r=await api('/api/heatmap'+(cam?`?camera_id=${encodeURIComponent(cam)}`:'')); const per=r.per_hour||r.hourly||r.by_hour||{}; const vals=Array.from({length:24},(_,h)=>+(per[h]??per[String(h)]??0)); const max=Math.max(1,...vals); $('heatMap').innerHTML=vals.map((v,h)=>`<div title="${h}:00 ${v}" style="width:14px;height:${Math.max(4,Math.round(v/max*32))}px;background:${v?'#0d6efd':'#e9ecef'};border-radius:2px"></div>`).join(''); }catch(e){} }
+async function loadEventStats(){ try{ const s=await api('/api/event-stats'); const labels=s.by_label||s.labels||s.top_labels||{}; const arr=Array.isArray(labels)?labels.map(x=>[x.label||x.name,x.count??x.total]):Object.entries(labels); arr.sort((a,b)=>b[1]-a[1]); const max=arr.length?arr[0][1]:1; $('evStats').innerHTML=arr.slice(0,8).map(([k,v])=>`<span title="${v}">${k} <span class="badge text-bg-info">${v}</span></span><span style="display:inline-block;width:${Math.max(4,Math.round(v/max*60))}px;height:8px;background:#0d6efd;border-radius:2px"></span>`).join('')||'no data'; }catch(e){ $('evStats').textContent='stats unavailable'; } }
+async function loadRecStatus(){ try{ const s=await api('/api/recordings/status'); $('recStatus').textContent=JSON.stringify(s,null,2); const n=s.active_count??(Array.isArray(s.active)?s.active.length:''); if(n!==''&&n!=null) $('navHealth').title=n+' active recordings'; }catch(e){ $('recStatus').textContent='Error: '+e.message; } }async function recStart(){ try{ const cam=CAMS.find(c=>c.id==$('recCam').value)||CAMS[0]; if(!cam){ toast('add a camera first',false); return; } const url=$('recUrl').value||cam.source; if(!url){ toast('camera has no source URL',false); return; } await api('/api/recordings/start',{method:'POST',body:JSON.stringify({camera_id:cam.id,main_url:url})}); toast('recording started'); }catch(e){ toast(e.message,false);} loadRecStatus(); }
+async function recStop(){ try{ const cam=CAMS.find(c=>c.id==$('recCam').value)||CAMS[0]; if(!cam){ toast('add a camera first',false); return; } await api('/api/recordings/stop',{method:'POST',body:JSON.stringify({camera_name:cam.name})}); toast('recording stopped'); }catch(e){ toast(e.message,false);} loadRecStatus(); }
+async function retentionRun(){ await api('/api/recordings/retention/run',{method:'POST',body:'{}'}).then(r=>toast('retention done')).catch(e=>toast(e.message,false)); }
+async function findGaps(){ try{ const r=await api('/api/gaps/scan'); const gaps=r.gaps||r.missing||[]; $('recStatus').textContent=JSON.stringify(r,null,2); toast(Array.isArray(gaps)?gaps.length+' gaps':'scan done'); }catch(e){ $('recStatus').textContent='Error: '+e.message; } }
+async function buildEvidence(){ try{ const r=await api('/api/evidence_pack',{method:'POST',body:JSON.stringify({camera_id:$('expCam').value||undefined})}); $('expOut').textContent=JSON.stringify(r,null,2).slice(0,1200); }catch(e){ $('expOut').textContent='Error: '+e.message; } }
+function dlPdf(){ window.open('/api/incidents/report.pdf','_blank'); }
+async function buildDigest(){ try{ const r=await api('/api/digest-video',{method:'POST',body:JSON.stringify({camera:$('expCam').value||undefined})}); $('expOut').textContent=JSON.stringify(r,null,2).slice(0,1200); }catch(e){ $('expOut').textContent='Error: '+e.message; } }
+async function createShare(){ try{ const r=await api('/api/share_links',{method:'POST',body:JSON.stringify({camera_id:$('expCam').value||undefined})}); const list=Array.isArray(r)?r:[r]; const tok=list[0]?.token||list[0]?.id||''; $('shareBox').innerHTML=tok?`<a href="/api/share/${tok}" target="_blank">/api/share/${tok}</a> <a href="#" onclick="navigator.clipboard.writeText(location.origin+'/api/share/${tok}');return false;">copy</a>`:'created'; }catch(e){ $('shareBox').textContent='Error: '+e.message; } }
+async function loadAudioDet(){ try{ const cam=$('expCam').value||''; const r=await api('/api/audio_detector'+(cam?`?camera_id=${cam}`:'')); $('expOut').textContent=JSON.stringify(r,null,2).slice(0,800); }catch(e){ $('expOut').textContent='Error: '+e.message; } }
+async function loadSem(){ try{ const q=$('semQ').value.trim(); if(!q) return; const r=await api('/api/semantic_search?q='+encodeURIComponent(q)); const list=Array.isArray(r)?r:(r.results||r.items||[]); $('evList').innerHTML=list.slice(0,50).map(x=>`<div class="border-bottom py-1 small"><strong>${x.label||x.text||x.id}</strong> <span class="text-muted">${x.score??x.similarity??''} ${x.created_at||''}</span></div>`).join('')||'<span class="text-muted">No matches.</span>'; }catch(e){ toast(e.message,false);} }
+async function loadBoard(){ try{ const cam=$('expCam').value||''; $('boardImg').src='/api/storyboard/preview?count=12'+(cam?`&camera=${encodeURIComponent(cam)}`:'')+'&t='+Date.now(); }catch(e){} }
+async function doExport(){ try{ const r=await api('/api/export',{method:'POST',body:JSON.stringify({camera_id:+$('expCam').value,start:$('expStart').value,end:$('expEnd').value})}); $('expOut').textContent=JSON.stringify(r,null,2);}catch(e){ $('expOut').textContent=e.message; } }
+let medFiles=[];
+function fmtBytes(b){ if(b==null) return ''; const u=['B','KB','MB','GB']; let i=0; while(b>=1024&&i<3){ b/=1024; i++; } return b.toFixed(1)+' '+u[i]; }
+async function loadMedia(){ try{ const r=await api('/api/media/recordings'); const files=Array.isArray(r)?r:(r.files||r.items||[]); medFiles=files.filter(f=>/\.(mp4|m4v|mov|mkv|webm|ts|jpg|jpeg|png)$/i.test(f.name||f.filename||'')); const groups={}; medFiles.forEach((f,i)=>{ const d=(f.modified||f.created||'').slice(0,10)||'unknown'; (groups[d]=groups[d]||[]).push({...f,_i:i}); }); $('medList').innerHTML=Object.keys(groups).sort().reverse().map(d=>`<div class="small text-muted mt-2 mb-1">${d} (${groups[d].length})</div>`+groups[d].map(f=>{ const nm=f.name||f.filename; const isV=/\.(mp4|m4v|mov|mkv|webm|ts)$/i.test(nm); return `<div class="border-bottom py-1 d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input medCk" value="${f._i}"><img src="/api/media/file?path=${encodeURIComponent(f.path||f.full_path)}" class="event-thumb" loading="lazy" onerror="this.style.display='none'"><div class="flex-grow-1"><strong>${nm}</strong><br><small class="text-muted">${fmtBytes(f.size||f.size_bytes)} · ${f.modified||''}</small></div><div class="btn-group btn-group-sm"><button class="btn btn-outline-primary" onclick="medPlay(${f._i})">Play</button><a class="btn btn-outline-secondary" href="/api/media/file?path=${encodeURIComponent(f.path||f.full_path)}" download>Save</a><button class="btn btn-outline-danger" onclick="medDel(${f._i})">×</button></div></div>`; }).join('')).join('')||'<div class="text-muted">No media files.</div>'; }catch(e){ $('medList').innerHTML='<div class="text-danger small">Unavailable.</div>'; } }
+function medUrl(i){ const f=medFiles[i]; return '/api/media/file?path='+encodeURIComponent(f.path||f.full_path); }
+function medPlay(i){ const f=medFiles[i]; if(!f) return; const isV=/\.(mp4|m4|mov|mk|webm|ts)$/i.test(f.name||''); $('mediaTitle').textContent=f.name||'Preview'; $('mediaBody').innerHTML=isV?`<video src="${medUrl(i)}" controls autoplay class="img-fluid" style="max-height:60vh"></video>`:`<img src="${medUrl(i)}" class="img-fluid">`; $('mediaDl').href=medUrl(i); new bootstrap.Modal($('mediaModal')).show(); }
+async function medDel(i){ const f=medFiles[i]; if(!await confirmDlg('Delete file','Delete '+(f.name||'this file')+'?'))return; try{ await fetch('/api/media/file?path='+encodeURIComponent(f.path||f.full_path),{method:'DELETE'}).then(r=>{ if(!r.ok) throw new Error(r.status); }); toast('deleted'); loadMedia(); }catch(e){ toast('delete failed: '+e.message,false);} }
+async function delMediaSel(){ const boxes=[...document.querySelectorAll('.medCk:checked')]; if(!boxes.length){ toast('nothing selected',false); return; } if(!await confirmDlg('Delete files',`Delete ${boxes.length} files? This cannot be undone.`))return; let n=0; for(const b of boxes){ const f=medFiles[+b.value]; try{ const r=await fetch('/api/media/file?path='+encodeURIComponent(f.path||f.full_path),{method:'DELETE'}); if(r.ok) n++; }catch(e){} } toast(`deleted ${n}/${boxes.length}`); loadMedia(); }
+async function loadSnapGallery(){ try{ const r=await api('/api/snapshot_gallery'); const list=Array.isArray(r)?r:(r.items||[]); $('snapGallery').innerHTML=list.slice(0,24).map(it=>{ const id=it.id||it.name; return `<img src="/api/snapshot_gallery/${id}/file" class="event-thumb" loading="lazy" title="${id}" onerror="this.style.display='none'" onclick="window.open('/api/snapshot_gallery/${id}/file','_blank')" style="cursor:pointer">`; }).join('')||'<span class="text-muted small">No snapshots yet.</span>'; }catch(e){ $('snapGallery').innerHTML='<span class="text-danger small">Unavailable.</span>'; } }
+async function loadTlGallery(){ try{ const r=await api('/api/timelapse/gallery'); const list=Array.isArray(r)?r:(r.items||r.gallery||r.timelapses||r.files||[]); $('tlGallery').innerHTML=list.slice(0,24).map(it=>{ const id=it.id||it.name; const url=it.url||it.file||it.path||(`/api/timelapse/gallery/${id}/file`); return `<div class="border rounded p-1 text-center" style="width:120px"><video src="${url}" class="img-fluid" preload="metadata" style="max-height:80px" onclick="this.paused?this.play():this.pause()" title="${id}"></video><div class="small text-truncate">${id}</div></div>`; }).join('')||'<span class="text-muted small">No timelapses yet.</span>'; }catch(e){ $('tlGallery').innerHTML='<span class="text-danger small">Unavailable.</span>'; } }
+async function loadPlugins(){ try{ const r=await api('/api/plugins'); const list=Array.isArray(r)?r:(r.plugins||r.items||[]); $('pluginList').innerHTML=list.map(p=>{ const nm=p.name||p.id; const on=p.enabled; return `<div class="list-group-item py-1 d-flex justify-content-between align-items-center"><small><strong>${nm}</strong> <span class="badge ${on?'text-bg-success':'text-bg-secondary'}">${on?'on':'off'}</span></small><div class="btn-group btn-group-sm"><button class="btn btn-outline-success" onclick="pluginToggle('${nm}',true)">On</button><button class="btn btn-outline-secondary" onclick="pluginToggle('${nm}',false)">Off</button></div></div>`; }).join('')||'<div class="text-muted small">No plugins.</div>'; }catch(e){ $('pluginList').innerHTML='<div class="text-danger small">Unavailable.</div>'; } }
+async function pluginToggle(name,on){ try{ await api(`/api/plugins/${encodeURIComponent(name)}/${on?'enable':'disable'}`,{method:'POST',body:'{}'}); loadPlugins(); }catch(e){ toast(e.message,false);} }
+async function loadBookmarks(){ try{ const r=await api('/api/bookmarks'); const list=Array.isArray(r)?r:(r.bookmarks||r.items||[]); $('bmList').innerHTML=list.map(b=>{ const id=b.id||b.bookmark_id; return `<div class="list-group-item py-1 d-flex justify-content-between align-items-center"><small><strong>${b.label||b.title||id}</strong> <span class="text-muted">${b.recording_id||b.camera_id||''} ${b.time||b.offset||''}</span></small><button class="btn btn-sm btn-outline-danger" onclick="delBookmark('${id}')">×</button></div>`; }).join('')||'<div class="text-muted small">No bookmarks.</div>'; }catch(e){ $('bmList').innerHTML='<div class="text-danger small">Unavailable.</div>'; } }
+async function addBookmark(){ const label=$('bmLabel').value.trim(); if(!label){ toast('label required',false); return; } try{ await api('/api/bookmarks',{method:'POST',body:JSON.stringify({label})}); $('bmLabel').value=''; loadBookmarks(); }catch(e){ toast(e.message,false);} }
+async function delBookmark(id){ try{ await api('/api/bookmarks/'+encodeURIComponent(id),{method:'DELETE'}); loadBookmarks(); }catch(e){ toast(e.message,false);} }
+async function loadCal(){ try{ const [y,m]=$('calMonth').value.split('-').map(Number); const r=await api(`/api/rec_calendar?year=${y}&month=${m}`); const days=r.days||r.by_date||r.counts||{}; $('calGrid').innerHTML=Object.entries(days).sort().map(([d,v])=>{ const n=v.total??v.count??v; return `<span class="badge ${n?'text-bg-primary':'text-bg-light border'}" title="${d}: ${n}">${d.slice(-2)}${n?` (${n})`:''}</span>`; }).join('')||'<span class="text-muted small">No data.</span>'; }catch(e){ $('calGrid').innerHTML='<span class="text-danger small">Calendar unavailable.</span>'; } }
+async function loadSnapSched(){ try{ const s=await api('/api/snapshot-schedule'); const list=Array.isArray(s)?s:(s.schedules||[]); $('snapSchedList').innerHTML=list.map(x=>`<div class="list-group-item small d-flex justify-content-between"><span>cam ${x.camera_id??x.camera} · ${x.schedule||x.cron||''}</span><button class="btn btn-sm btn-outline-danger" onclick="delSnapSched(${x.id??x.schedule_id})">×</button></div>`).join('')||'<div class="text-muted small">No schedules.</div>'; }catch(e){ $('snapSchedList').innerHTML='<div class="text-muted small">Unavailable.</div>'; } }
+async function addSnapSched(){ try{ await api('/api/snapshot-schedule/schedule',{method:'POST',body:JSON.stringify({camera_id:+$('snapCam').value,schedule:$('snapCron').value})}); loadSnapSched(); toast('schedule added'); }catch(e){ toast(e.message,false);} }
+async function delSnapSched(id){ try{ await api('/api/snapshot-schedule/'+id,{method:'DELETE'}); loadSnapSched(); }catch(e){ toast(e.message,false);} }
+async function addRule(){ try{ await api('/api/rules/standing',{method:'POST',body:JSON.stringify({sentence:$('ruleText').value})}); $('ruleText').value=''; loadRules(); }catch(e){ toast(e.message,false);} }
+async function loadRules(){ try{ const r=await api('/api/rules/standing'); $('ruleList').innerHTML=r.map(x=>`<div class="list-group-item small d-flex justify-content-between"><div>${x.sentence}<br><span class="text-muted">${x.target_object} · expires ${x.expires_at}</span></div><button class="btn btn-sm btn-outline-danger" onclick="delRule(${x.id})">×</button></div>`).join('')||'<div class="text-muted small">No rules.</div>'; }catch(e){} }
+async function loadSavedFilters(){ try{ const f=await api('/api/saved_filters'); const list=Array.isArray(f)?f:(f.filters||[]); $('eSaved').innerHTML='<option value="">Saved…</option>'+list.map(x=>`<option value="${x.id}">${x.name||x.id}</option>`).join(''); }catch(e){} }
+async function applySavedFilter(id){ if(!id) return; try{ const r=await api(`/api/saved_filters/${id}/query`); const q=r.query||r.filter||{}; if(q.label!==undefined) $('eLabel').value=q.label; if(q.tag!==undefined) $('eTag').value=q.tag; if(q.camera_id!==undefined) $('eventFilterCamera').value=q.camera_id; loadEvents(); }catch(e){ toast(e.message,false);} }
+async function delRule(id){ await api('/api/rules/standing/'+id,{method:'DELETE'}).catch(async()=>{ await api('/api/rules/standing/expire',{method:'POST',body:'{}'}); }); loadRules(); }
+// zones
+let zones=[]; let curPoly=[];
+const cv=$('zoneCanvas'), ctx=cv.getContext('2d');
+cv.addEventListener('click',e=>{ const r=cv.getBoundingClientRect(); curPoly.push([Math.round((e.clientX-r.left)*640/r.width),Math.round((e.clientY-r.top)*360/r.height)]); drawZones(); });
+cv.addEventListener('dblclick',()=>{ if(curPoly.length>2){ zones.push({points:curPoly,mode:$('zoneMode').value,threshold:+$('zoneThresh').value}); curPoly=[]; drawZones(); renderZones(); } });
+function drawZones(){ ctx.fillStyle='#111'; ctx.fillRect(0,0,640,360); ctx.strokeStyle='#0d6efd'; zones.forEach(z=>{ ctx.beginPath(); z.points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath(); ctx.stroke(); }); if(curPoly.length){ ctx.strokeStyle='#ffc107'; ctx.beginPath(); curPoly.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.stroke(); } }
+function renderZones(){ $('zoneList').textContent=zones.length+' zones'; $('zoneJson').value=JSON.stringify(zones); }
+function applyZoneJson(){ try{ zones=JSON.parse($('zoneJson').value||'[]'); curPoly=[]; drawZones(); renderZones(); }catch(e){ toast('bad JSON',false); } }
+function addZone(){ if(curPoly.length>2){ zones.push({points:curPoly,mode:$('zoneMode').value,threshold:+$('zoneThresh').value}); curPoly=[]; drawZones(); renderZones(); } }
+function undoPt(){ curPoly.pop(); drawZones(); }
+function clearZones(){ zones=[]; curPoly=[]; drawZones(); renderZones(); }
+async function loadZoneTpl(){ try{ const t=await api('/api/zone_templates'); const list=Array.isArray(t)?t:(t.templates||t.names||[]); $('zoneTpl').innerHTML='<option value="">Template…</option>'+list.map(x=>{ const n=x.name||x; return `<option value="${n}">${n}</option>`; }).join(''); }catch(e){} }
+async function applyZoneTpl(){ const n=$('zoneTpl').value; if(!n) return; try{ const r=await api('/api/zone_templates/apply',{method:'POST',body:JSON.stringify({name:n,width:640,height:360})}); const zs=r.zones||r.polygons||[]; zones=zs.map(z=>({points:(z.points||z).map(p=>Array.isArray(p)?p:[p.x,p.y]),mode:z.mode||'include',threshold:z.threshold??+$('zoneThresh').value})); curPoly=[]; drawZones(); renderZones(); toast('template applied'); }catch(e){ toast(e.message,false);} }
+async function loadZones(){ const id=$('zoneCam').value; if(!id)return; try{ const c=await api('/api/cameras/'+id); zones=c.motion_zones||[]; drawZones(); renderZones(); }catch(e){} }
+async function loadMotionPresets(){ try{ const p=await api('/api/motion_presets'); const list=Array.isArray(p)?p:(p.presets||p.names||[]); $('motionPresetRow').innerHTML=list.map(x=>{ const n=x.name||x; return `<button class="btn btn-outline-secondary" onclick="applyMotionPreset('${n}')">${n}</button>`; }).join(''); }catch(e){} }
+async function applyMotionPreset(n){ try{ const r=await api('/api/motion_presets/apply',{method:'POST',body:JSON.stringify({name:n})}); const t=r.threshold??r.threshold_percentage??r.sensitivity; if(t!=null) $('zoneThresh').value=t; toast('preset '+n); }catch(e){ toast(e.message,false);} }
+async function saveZones(){ const id=$('zoneCam').value; if(!id)return; await api('/api/cameras/'+id,{method:'PATCH',body:JSON.stringify({motion_zones:zones})}); toast('zones saved'); }
+function camHost(c){ if(!c) return ''; return c.onvif_host||c.ip_address||(/^(\d+\.\d+\.\d+\.\d+|[\w\-.]+)(:\d+)?$/.test(c.source||'')?c.source:''); }
+const PTZ_VEC={up:[0,0.5],down:[0,-0.5],left:[-0.5,0],right:[0.5,0],zoomin:[0,0],zoomout:[0,0]};
+async function ptzMove(d){ const c=CAMS.find(x=>x.id==$('ptzCam').value); const host=camHost(c); if(!host){ $('ptzOut').textContent='No camera host (set ONVIF host/IP on camera)'; return; } const v=PTZ_VEC[d]||[0,0]; try{ const r=await api('/api/onvif/ptz/move',{method:'POST',body:JSON.stringify({host,x:v[0],y:v[1]})}); $('ptzOut').textContent=JSON.stringify(r,null,2);}catch(e){ $('ptzOut').textContent='Error: '+e.message; } }
+async function ptzStop(){ const c=CAMS.find(x=>x.id==$('ptzCam').value); const host=camHost(c); if(!host){ return; } try{ await api('/api/onvif/ptz/stop',{method:'POST',body:JSON.stringify({host})}); }catch(e){ $('ptzOut').textContent='Error: '+e.message; } }
+async function ptzPresets(){ const c=CAMS.find(x=>x.id==$('ptzCam').value); const host=camHost(c); if(!host){ $('ptzOut').textContent='No camera host'; return; } try{ document.querySelectorAll('.ptz-goto-btn').forEach(x=>x.remove()); const r=await api('/api/onvif/ptz/presets',{method:'POST',body:JSON.stringify({host})}); $('ptzOut').textContent=JSON.stringify(r,null,2); const presets=r.presets||r.data||[]; if(Array.isArray(presets)&&presets.length){ presets.forEach(p=>{ const t=p.preset_token||p.token||p; const b=document.createElement('button'); b.className='btn btn-sm btn-outline-primary m-1 ptz-goto-btn'; b.textContent='Go '+t; b.onclick=()=>ptzGoto(t); $('ptzOut').after(b); }); } }catch(e){ $('ptzOut').textContent='Error: '+e.message; } }
+async function ptzGoto(token){ const c=CAMS.find(x=>x.id==$('ptzCam').value); const host=camHost(c); if(!host) return; try{ const r=await api('/api/onvif/ptz/goto_preset',{method:'POST',body:JSON.stringify({host,preset_token:token})}); $('ptzOut').textContent=JSON.stringify(r,null,2);}catch(e){ $('ptzOut').textContent='Error: '+e.message; } }
+async function plibSave(){ const cam=$('ptzCam').value; const name=$('plibName').value.trim(); if(!name){ toast('name required',false); return; } try{ await api('/api/preset_library',{method:'POST',body:JSON.stringify({camera_id:+cam,name,preset_token:$('plibToken').value||undefined})}); $('plibName').value='';$('plibToken').value=''; plibLoad(); toast('preset saved'); }catch(e){ toast(e.message,false);} }
+async function plibLoad(){ try{ const r=await api('/api/preset_library?camera_id='+$('ptzCam').value); const list=Array.isArray(r)?r:(r.presets||[]); $('plibList').innerHTML=list.map(p=>`<div class="list-group-item py-1 d-flex justify-content-between align-items-center"><img src="/api/preset_snaps/${p.id}/image" class="event-thumb" loading="lazy" onerror="this.style.display='none'" style="width:48px;height:36px"><small>${p.name}</small><div class="btn-group btn-group-sm"><button class="btn btn-outline-primary" onclick="ptzGoto('${(p.preset_token||'').replace(/'/g,'')}')">Go</button><button class="btn btn-outline-secondary" onclick="plibSnap(${p.id})" title="Capture snapshot">📷</button><button class="btn btn-outline-danger" onclick="plibDel(${p.id})">×</button></div></div>`).join('')||'<div class="text-muted small">No saved presets.</div>'; }catch(e){ $('plibList').innerHTML='<div class="text-muted small">Unavailable.</div>'; } }
+async function plibSnap(id){ try{ await api(`/api/preset_snaps/${id}/capture`,{method:'POST',body:'{}'}); toast('snapshot saved'); plibLoad(); }catch(e){ toast(e.message,false);} }
+async function plibDel(id){ try{ await api('/api/preset_library/'+id,{method:'DELETE'}); plibLoad(); }catch(e){ toast(e.message,false);} }
+async function tourLoad(){ try{ let prog={}; try{ const pp=await api('/api/tour_progress'); (Array.isArray(pp)?pp:(pp.tours||pp.items||[])).forEach(t=>{ prog[t.id??t.name]=t.progress_percent??t.progress; }); }catch(e){} const r=await api('/api/ptz_tour'); const list=Array.isArray(r)?r:(r.tours||r.patrols||[]); $('tourList').innerHTML=list.map(t=>{ const id=t.id??t.name; return `<div class="list-group-item py-1 d-flex justify-content-between"><small>${t.name||id} ${t.running?'<span class="badge text-bg-success">running</span>':''}${prog[id]!=null?` <span class="badge text-bg-info">${Math.round(prog[id])}%</span>`:''}</small><div class="btn-group btn-group-sm"><button class="btn btn-outline-success" onclick="tourStart('${id}')">Start</button><button class="btn btn-outline-secondary" onclick="tourStop('${id}')">Stop</button><button class="btn btn-outline-danger" onclick="tourDel('${id}')">×</button></div></div>`; }).join('')||'<div class="text-muted small">No tours.</div>'; }catch(e){ $('tourList').innerHTML='<div class="text-muted small">Unavailable.</div>'; } }
+async function tourCreate(){ try{ await api('/api/ptz_tour',{method:'POST',body:JSON.stringify({name:$('tourName').value,camera_id:+$('ptzCam').value,preset_tokens:$('tourPresets').value.split(',').map(s=>s.trim()).filter(Boolean)})}); $('tourName').value='';$('tourPresets').value=''; tourLoad(); }catch(e){ toast(e.message,false);} }
+async function tourStart(id){ try{ await api(`/api/ptz_tour/${id}/start`,{method:'POST',body:'{}'}); tourLoad(); }catch(e){ toast(e.message,false);} }
+async function tourStop(id){ try{ await api(`/api/ptz_tour/${id}/stop`,{method:'POST',body:'{}'}); tourLoad(); }catch(e){ toast(e.message,false);} }
+async function tourDel(id){ try{ await api('/api/ptz_tour/'+id,{method:'DELETE'}); tourLoad(); }catch(e){ toast(e.message,false);} }
+async function loadScheds(){ try{ const r=await api('/api/rec_schedules'); const list=Array.isArray(r)?r:(r.schedules||r.jobs||[]); $('recSchedList').innerHTML=list.map(x=>`<div class="list-group-item py-1 d-flex justify-content-between"><small>cam ${x.camera_id??x.camera??''} · ${x.schedule||x.rule||x.cron||x.name||''}</small><button class="btn btn-sm btn-outline-danger" onclick="rsDel('${x.id??x.schedule_id}')">×</button></div>`).join('')||'<div class="text-muted small">No recording schedules.</div>'; }catch(e){ $('recSchedList').innerHTML='<div class="text-muted small">Unavailable.</div>'; } try{ const r=await api('/api/ptz/schedules'); const list=Array.isArray(r)?r:(r.schedules||[]); $('ptzSchedList').innerHTML=list.map(x=>`<div class="list-group-item py-1 d-flex justify-content-between"><small>cam ${x.camera_id??''} · ${x.schedule||x.rule||x.cron||x.name||''}</small><button class="btn btn-sm btn-outline-danger" onclick="psDel(${x.id})">×</button></div>`).join('')||'<div class="text-muted small">No PTZ schedules.</div>'; }catch(e){ $('ptzSchedList').innerHTML='<div class="text-muted small">Unavailable.</div>'; } }
+async function rsAdd(){ try{ await api('/api/rec_schedules',{method:'POST',body:JSON.stringify({camera_id:+$('rsCam').value,schedule:$('rsRule').value})}); $('rsRule').value=''; loadScheds(); toast('schedule added'); }catch(e){ toast(e.message,false);} }
+async function rsDel(id){ try{ await api('/api/rec_schedules/'+id,{method:'DELETE'}); loadScheds(); }catch(e){ toast(e.message,false);} }
+async function psAdd(){ try{ await api('/api/ptz/schedules',{method:'POST',body:JSON.stringify({camera_id:+$('psCam').value,schedule:$('psRule').value})}); $('psRule').value=''; loadScheds(); toast('schedule added'); }catch(e){ toast(e.message,false);} }
+async function psDel(id){ try{ await api('/api/ptz/schedules/'+id,{method:'DELETE'}); loadScheds(); }catch(e){ toast(e.message,false);} }
+async function loadMics(){ try{ const r=await api('/api/microphones'); const list=Array.isArray(r)?r:(r.microphones||[]); $('micList').innerHTML=list.map(m=>`<div class="list-group-item py-1 d-flex justify-content-between"><small>${m.name||m.id}</small><button class="btn btn-sm btn-outline-danger" onclick="delMic('${m.id}')">×</button></div>`).join('')||'<div class="text-muted small">No microphones.</div>'; }catch(e){ $('micList').innerHTML='<div class="text-muted small">Unavailable.</div>'; } }
+async function addMic(){ try{ await api('/api/microphones',{method:'POST',body:JSON.stringify({name:$('micName').value,source:$('micSrc').value||undefined})}); $('micName').value='';$('micSrc').value=''; loadMics(); }catch(e){ toast(e.message,false);} }
+async function delMic(id){ try{ await api('/api/microphones/'+id,{method:'DELETE'}); loadMics(); }catch(e){ toast(e.message,false);} }
+async function testWebhook(){ await api('/api/actions/test',{method:'POST',body:JSON.stringify({type:'webhook',target:$('actUrl').value})}).then(()=>toast('sent')).catch(e=>toast(e.message,false)); }
+async function loadAi(){ try{ const s=await api('/api/ai/settings'); $('aiEnabled').checked=!!(s.AI_ENABLED??s.ai_enabled??s.enabled); $('aiBase').value=s.AI_BASE_URL??s.base_url??''; $('aiModel').value=s.AI_VLM_MODEL??s.model??''; $('aiBox').textContent=JSON.stringify(s,null,2);}catch(e){ $('aiBox').textContent='Error: '+e.message; } }
+async function saveAi(){ try{ await api('/api/ai/settings',{method:'PUT',body:JSON.stringify({AI_ENABLED:$('aiEnabled').checked,AI_BASE_URL:$('aiBase').value||undefined,AI_VLM_MODEL:$('aiModel').value||undefined})}); toast('AI saved'); loadAi(); }catch(e){ toast(e.message,false);} }
+async function testAi(){ try{ const r=await api('/api/ai/test',{method:'POST',body:'{}'}); $('aiBox').textContent=JSON.stringify(r,null,2);}catch(e){ $('aiBox').textContent='Error: '+e.message; } }
+async function drawDonut(segs){ const cv=$('donutCanvas'); if(!cv) return; const ctx=cv.getContext('2d'); ctx.clearRect(0,0,120,120); const total=segs.reduce((a,s)=>a+(s.value||0),0)||1; let a0=-Math.PI/2; segs.forEach(sg=>{ const a1=a0+(sg.value/total)*Math.PI*2; ctx.beginPath(); ctx.moveTo(60,60); ctx.arc(60,60,55,a0,a1); ctx.closePath(); ctx.fillStyle=sg.color||'#0d6efd'; ctx.fill(); a0=a1; }); $('donutLegend').innerHTML=segs.map(sg=>`<div><span style="display:inline-block;width:10px;height:10px;background:${sg.color||'#0d6efd'}"></span> ${sg.label} (${(100*sg.value/total).toFixed(1)}%)</div>`).join(''); }
+async function loadDonut(){ try{ const r=await api('/api/storage-donut?format=list'); const segs=Array.isArray(r)?r:(r.segments||[]); if(segs.length) drawDonut(segs); }catch(e){} }
+async function quotaCheck(){ try{ const r=await api('/api/storage_quota/check',{method:'POST',body:JSON.stringify({area_id:$('quotaArea').value||undefined,max_bytes:$('quotaBytes').value?+$('quotaBytes').value:undefined})}); $('quotaOut').textContent=JSON.stringify(r,null,2).slice(0,1500); }catch(e){ $('quotaOut').textContent='Error: '+e.message; } }
+async function quotaEnforce(){ if(!await confirmDlg('Enforce quotas','Delete oldest files over quota? (dry-run first recommended)'))return; try{ const r=await api('/api/storage_quota/enforce',{method:'POST',body:JSON.stringify({area_id:$('quotaArea').value||undefined,max_bytes:$('quotaBytes').value?+$('quotaBytes').value:undefined})})}); $('quotaOut').textContent=JSON.stringify(r,null,2).slice(0,1500); loadStorage(); }catch(e){ toast(e.message,false);} }
+async function loadStorage(){ try{ loadDonut(); const [areas,sum]=await Promise.all([api('/api/storage/areas').catch(()=>'n/a'),api('/api/storage/summary').catch(()=>'n/a')]); $('storAreas').innerHTML=Array.isArray(areas)?areas.map(a=>`<div class="list-group-item d-flex justify-content-between py-1"><small>${a.name} · ${a.path||''}</small><button class="btn btn-sm btn-outline-danger" onclick="delArea(${a.id})">×</button></div>`).join(''):''; $('storBox').textContent=JSON.stringify(sum,null,2);}catch(e){ $('storBox').textContent='Error: '+e.message; } }
+async function addArea(){ try{ await api('/api/storage/areas',{method:'POST',body:JSON.stringify({name:$('storName').value,path:$('storPath').value})}); $('storName').value='';$('storPath').value=''; loadStorage(); }catch(e){ toast(e.message,false);} }
+async function delArea(id){ await api('/api/storage/areas/'+id,{method:'DELETE'}).catch(e=>toast(e.message,false)); loadStorage(); }
+async function cleanupAdvise(){ try{ const r=await api('/api/cleanup_advisor',{method:'POST',body:'{}'}); const list=r.suggestions||r.ranked_suggestions||r.items||[]; $('cleanupOut').innerHTML=list.slice(0,10).map(s=>`<div class="border-bottom py-1">${s.title||s.reason||s.action||JSON.stringify(s).slice(0,120)}</div>`).join('')||'<span class="text-muted">No cleanup needed.</span>'; }catch(e){ $('cleanupOut').textContent='Unavailable.'; } }
+async function loadRelay(){ try{ const s=await api('/api/relay/settings'); $('relayEnabled').checked=!!(s.enabled??s.is_enabled); $('relayUrl').value=s.relay_url||s.url||''; $('relayBox').textContent=JSON.stringify(s,null,2);}catch(e){} }
+async function saveRelay(){ try{ await api('/api/relay/settings',{method:'PUT',body:JSON.stringify({enabled:$('relayEnabled').checked,relay_url:$('relayUrl').value||undefined})}); toast('relay saved'); loadRelay(); }catch(e){ toast(e.message,false);} }
+async function testRelay(){ try{ const r=await api('/api/relay/test',{method:'POST',body:'{}'}); $('relayBox').textContent=JSON.stringify(r,null,2);}catch(e){ $('relayBox').textContent='Error: '+e.message; } }
+async function loadSys(){ try{ const [h,m]=await Promise.all([api('/health'),api('/api/system/metrics').catch(()=>'n/a')]); $('sysBox').textContent=JSON.stringify({health:h,metrics:m},null,2); $('mCpu').textContent=m?.cpu?.load_1m??'—'; $('navHealth').className='badge '+(h.status==='ok'?'text-bg-success':'text-bg-danger'); }catch(e){} try{ loadInbox(); }catch(e){} }
+async function loadInbox(){ try{ const r=await api('/api/alert-inbox/alerts?limit=8'); const list=Array.isArray(r)?r:(r.alerts||r.items||[]); $('alertCount').textContent=list.length; const sev=c=>c==='critical'?'danger':c==='warning'?'warning':'secondary'; $('alertInbox').innerHTML=list.map(a=>`<div class="d-flex justify-content-between"><span><span class="badge text-bg-${sev(a.severity)}">${a.severity||'info'}</span> ${a.title||a.message||a.id}</span><small class="text-muted">${a.source||''} · ${a.at||a.timestamp||''}</small></div>`).join('')||'<span class="text-muted">All clear — no active alerts.</span>'; }catch(e){ $('alertInbox').innerHTML='<span class="text-muted">Unavailable.</span>'; } }
+async function loadWatchdog(){ try{ $('wdBox').textContent=JSON.stringify(await api('/api/watchdog/status'),null,2);}catch(e){ $('wdBox').textContent='Error: '+e.message; } }
+async function makeBackup(){ try{ const r=await api('/api/backup',{method:'POST',body:'{}'}); toast('backup '+(r.id||r.name||'done')); const id=r.id||r.backup_id||r.name; if(id) window.open('/api/backup/'+id,'_blank'); }catch(e){ toast(e.message,false);} }
+function dlDiag(){ window.open('/api/diagnostics/bundle','_blank'); }
+function auditCsv(){ window.open('/api/audit/export?format=csv','_blank'); }
+async function loadLogins(){ try{ const r=await api('/api/login/history?limit=20'); const list=Array.isArray(r)?r:(r.items||r.logins||r.entries||[]); $('loginBox').innerHTML=list.slice(0,20).map(e=>`<div class="border-bottom py-1">${e.user||e.username||''} \u00b7 ${e.status||e.result||''} \u00b7 <span class="text-muted">${e.ip||''} ${e.at||e.timestamp||e.created_at||''}</span></div>`).join('')||'<span class="text-muted">No logins recorded.</span>'; }catch(e){ $('loginBox').innerHTML='<span class="text-danger">Unavailable.</span>'; } }
+async function loadSessions(){ try{ const r=await api('/api/user_sessions'); const list=Array.isArray(r)?r:(r.sessions||r.items||[]); $('loginBox').innerHTML=list.slice(0,20).map(s=>`<div class="border-bottom py-1">${s.user||s.username||s.id||''} <span class="text-muted">${s.ip||''} ${s.created_at||s.at||''}</span></div>`).join('')||'<span class="text-muted">No active sessions.</span>'; }catch(e){ $('loginBox').innerHTML='<span class="text-danger">Unavailable.</span>'; } }
+async function loadAudit(){ try{ const q=$('auditQ')?.value||''; const r=await api('/api/audit?limit=100'+(q?`&action=${encodeURIComponent(q)}`:'')); const list=Array.isArray(r)?r:(r.entries||r.items||[]); $('auditBox').innerHTML=list.slice(0,100).map(e=>`<div class="border-bottom py-1 d-flex gap-2 small"><span class="text-muted">${e.at||e.timestamp||e.created_at||''}</span><strong>${e.action||e.event_type||e.type||''}</strong><span class="flex-grow-1">${e.actor||e.user||''} ${e.entity_type||e.target_type||''} ${e.entity_id||e.target_id||''}</span><span class="text-muted">${e.ip||''}</span></div>`).join('')||'<span class="text-muted small">No audit entries.</span>'; }catch(e){ $('auditBox').innerHTML='<span class="text-danger small">Unavailable.</span>'; } }
+function mqttHostPort(){ let u=($('mqttUrl').value||'').trim().replace(/^[a-z]+:\/\//i,''); const m=u.match(/^(\[[^\]]+\]|[^:/]+)(?::(\d+))?/); return {host:m?m[1]:u||undefined,port:m&&m[2]?+m[2]:undefined}; }
+async function mqttTest(){ try{ const hp=mqttHostPort(); const r=await api('/api/mqtt/publish',{method:'POST',body:JSON.stringify({host:hp.host,port:hp.port,topic:$('mqttTopic').value||'vigilcam/test',message:'hello from VigilCam'})}); $('mqttBox').textContent=JSON.stringify(r,null,2);}catch(e){ $('mqttBox').textContent='Error: '+e.message; } }
+async function mqttDisc(){ try{ const hp=mqttHostPort(); const r=await api('/api/mqtt/discovery',{method:'POST',body:JSON.stringify({host:hp.host,port:hp.port})}); $('mqttBox').textContent=JSON.stringify(r,null,2);}catch(e){ $('mqttBox').textContent='Error: '+e.message; } }
+async function loadMentions(){ try{ const r=await api('/api/mentions?unread_only=false'); const list=Array.isArray(r)?r:(r.notifications||[]); const unread=list.filter(n=>!n.read).length; $('mentionBadge').textContent=unread; $('mentionList').innerHTML=list.slice(0,20).map(n=>`<div class="list-group-item py-1 d-flex justify-content-between"><small>${n.text||n.message||n.id}</small><button class="btn btn-sm btn-outline-secondary" onclick="readMention('${n.id}')">Read</button></div>`).join('')||'<div class="text-muted small">No mentions.</div>'; }catch(e){} }
+async function readMention(id){ try{ await api(`/api/mentions/${id}/read`,{method:'POST',body:'{}'}); loadMentions(); loadPeople(); }catch(e){ toast(e.message,false);} }
+function exportCfg(){ window.open('/api/config-io/export','_blank'); }
+async function importCfg(inp){ const f=inp.files[0]; if(!f) return; try{ const data=JSON.parse(await f.text()); const r=await api('/api/config-io/import',{method:'POST',body:JSON.stringify(data)}); toast('config imported'); loadCameras(); }catch(e){ toast(e.message,false);} inp.value=''; }
+async function loadActivity(){ try{ const a=await api('/api/cameras/activity?seconds=60'); $('activityBox').textContent=(a.active||[]).map(x=>x.name||x.id).join(', ')||'idle'; }catch(e){} }
+$('activeOnly').addEventListener('change',loadCameras);
+$('fKind').addEventListener('change',()=>{ const k=$('fKind').value; $('srcHint').textContent=k==='usb'?'device index like 0, or /dev/video0':k==='onvif'?'camera IP/hostname — credentials tested via Probe':'rtsp://…, http://…, or MJPEG URL'; });
+// ws
+try{ const ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/events'); ws.onmessage=e=>{ $('wsLog').textContent=e.data.slice(0,500)+'\n'+$('wsLog').textContent.slice(0,2000); if($('sndAlert')?.checked){ try{ const a=new AudioContext(); const o=a.createOscillator(); o.connect(a.destination); o.start(); o.stop(a.currentTime+0.15); }catch(err){} } }; }catch(e){}
+try{ setTheme(localStorage.getItem('vigilcam-theme')||'light'); }catch(e){} drawZones(); heroRefresh(); loadDonut(); loadCameras(); loadEvents(); loadMedia(); loadRecStatus(); loadSys(); loadUsb(); loadRules(); loadRelay(); loadStorage(); loadZoneTpl(); loadSavedFilters(); loadMotionPresets(); loadSnapSched(); loadFpLayouts(); tourLoad(); plibLoad(); loadMics(); loadScheds(); loadSnapGallery(); loadTlGallery(); loadPlugins(); loadBookmarks(); loadMentions(); routeHash();
+try{ const d=new Date(); $('calMonth').value=d.toISOString().slice(0,7); }catch(e){}
+setInterval(loadActivity,15000);
+setInterval(()=>{ if($('autoRef')?.checked) loadCameras(); },15000);
+setInterval(()=>{ if(document.querySelector('[data-bs-target="#v-dashboard"]')?.classList.contains('active')) heroRefresh(); },45000);
+let wallTimer=null, wallGroups=[], wallGi=0;
+async function openWall(){ $('wallOverlay').style.display='flex'; try{ const gs=[...new Set(CAMS.map(c=>c.group||c.group_id).filter(Boolean))]; wallGroups=gs; $('wallGroup').innerHTML='<option value="">All cameras</option>'+gs.map(g=>`<option value="${g}">${g}</option>`).join(''); }catch(e){} wallRefresh(); wallCycle(); document.addEventListener('keydown',wallEsc); }
+function closeWall(){ $('wallOverlay').style.display='none'; if(wallTimer){ clearInterval(wallTimer); wallTimer=null; } document.removeEventListener('keydown',wallEsc); }
+function wallEsc(e){ if(e.key==='Escape') closeWall(); }
+async function wallRefresh(){ const g=$('wallGroup').value||''; try{ const ids=CAMS.filter(c=>!g||String(c.group||c.group_id)===String(g)).map(c=>c.id).join(','); $('wallImg').src=`/api/mosaic?width=1280&camera_ids=${encodeURIComponent(ids)}&t=${Date.now()}`; const info=await api('/api/cameras/activity?seconds=120').catch(()=>null); $('wallInfo').textContent=(info&&info.active?info.active.length+' active':'')+(g?` · ${g}`:''); }catch(e){} }
+function wallCycle(){ if(wallTimer){ clearInterval(wallTimer); wallTimer=null; } const sec=+$('wallCycle').value||0; if(!sec||!wallGroups.length) return; wallTimer=setInterval(()=>{ const opts=[...$('wallGroup').options].map(o=>o.value); wallGi=(wallGi+1)%opts.length; $('wallGroup').value=opts[wallGi]; wallRefresh(); },sec*1000); }
 </script>
 </body>
 </html>

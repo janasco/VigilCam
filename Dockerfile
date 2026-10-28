@@ -15,7 +15,7 @@ COPY .env.example ./.env
 RUN mkdir -p /app/data/recordings /app/data/snapshots
 
 ENV HOST=0.0.0.0
-ENV PORT=8080
-EXPOSE 8080
+ENV PORT=11947
+EXPOSE 11947
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "11947"]

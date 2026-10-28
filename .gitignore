@@ -13,3 +13,6 @@ data/
 
 # Build / OS
 .DS_Store
+
+# Vendored reference code
+vendor/
