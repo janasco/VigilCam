@@ -93,14 +93,19 @@ def _try_ffmpeg_capture(source: str, dest: Path, timeout: float = 15.0) -> bool:
     if not source or not _ffmpeg_available():
         return False
     try:
+        is_rtsp = str(source).lower().startswith("rtsp://")
         cmd = [
             "ffmpeg",
             "-y",
             "-hide_banner",
             "-loglevel",
             "error",
-            "-rtsp_transport",
-            "tcp",
+        ]
+        if is_rtsp:
+            # NOTE: -rtsp_transport is an RTSP-demuxer private option. Passing
+            # it for http/file inputs makes ffmpeg abort with "Option not found".
+            cmd += ["-rtsp_transport", "tcp"]
+        cmd += [
             "-i",
             str(source),
             "-vframes",
