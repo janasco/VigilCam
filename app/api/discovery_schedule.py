@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 import app.services.discovery_schedule as svc
 
@@ -35,8 +35,7 @@ class ScheduleConfigRequest(BaseModel):
     include_ws: Optional[bool] = None
     notify_new: Optional[bool] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class ScanRequest(BaseModel):
@@ -49,8 +48,7 @@ class ScanRequest(BaseModel):
     include_ws: Optional[bool] = None
     notify_new: Optional[bool] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 def _payload(model: Any, body: Any) -> Dict[str, Any]:

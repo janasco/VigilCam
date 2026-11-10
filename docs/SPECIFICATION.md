@@ -110,6 +110,7 @@ Phase 4: Scale and enterprise features
 2. Network probe and auto-discovery
 3. Add device wizard
 4. Baseline AI assignment
+5. Storage and retention configuration (with clickable step-pill navigation and synced Dark/Light theme)
 
 ## 12. Port and Discovery
 
@@ -121,7 +122,7 @@ Phase 4: Scale and enterprise features
 ## 13. Technology Stack
 
 - Backend: Go or FastAPI
-- Frontend: Svelte or React + Vite
+- Frontend: Svelte or React + Vite (and modular 8-tab Bootstrap web UI with keyboard shortcuts and Live Wall)
 - Video: FFmpeg
 - AI: ONNX Runtime
 - Database: SQLite + Redis
@@ -131,31 +132,35 @@ Phase 4: Scale and enterprise features
 Voice/audio → intent routing → camera snapshot → VLM → text-to-speech response.
 
 Supports local Ollama/llama.cpp and cloud providers through an OpenAI-compatible
-configuration.
+configuration, backed by the AI Model Registry, Face Recognition embeddings, and
+License Plate Recognition (LPR/ANPR).
 
 ## 15. Performance Architecture
 
 - OpenCV motion gating
 - Multiprocessed frame handling
 - Frame dropping for realtime behavior
-- Zero-transcode H.264 recording
+- Zero-transcode H.264 recording and lossless clip trimming
 - Shared-memory image transfer
 - Smart object-based retention
-- Hardware decode/accelerators as deployment options
+- Hardware decode/accelerators as deployment options (VAAPI, NVENC, QSV, V4L2-M2M)
 - RTSP re-streaming through MediaMTX
-- Dynamic combined camera grid
+- Dynamic combined camera grid and Fullscreen Live Wall with group filtering and auto-cycle
+- Multi-server node dispatch for horizontal camera and AI workload scaling
 
 ## 16. ROI Zoning and Recording Modes
 
-- Paint-to-exclude ignored areas
+- Paint-to-exclude ignored areas and interactive Motion Tuner
+- Line-crossing tripwires with directional counting
 - Threshold percentages
 - Modes: always, motion, manual, scheduled
-- Granular time profiles
+- Granular time profiles and PTZ Auto-Tracking / Patrol / Solar schedules
+- Compliance exports with EDL, SRT subtitles, and SHA-256 manifests
 
 ## 17. Alert and Action Framework
 
 - Local actions: snapshots, GPIO, chimes
-- Remote actions: MQTT, webhooks, Telegram/Discord
+- Remote actions: MQTT, webhooks, Telegram/Discord, Web Push notifications (VAPID), Email Digest Scheduler, Cloud/FTP/S3 uploads
 - Decoupled event bus
 
 ## 18. MCP Server
@@ -168,13 +173,13 @@ references, and system state controls to AI clients while keeping footage local.
 Natural-language rules are parsed into structured constraints and stored with
 expiration. The event loop evaluates detections against active rules.
 
-## 20. Outbound Relay
+## 20. Outbound Relay & Network Hardening
 
 Persistent outbound TLS tunnel avoids dynamic DNS, port forwarding, and
 insecure exposure. Cloud relay is blind and data is end-to-end encrypted.
+For multi-homed NVR hosts, Dual-NIC Camera LAN Hardening isolates untrusted
+PoE camera subnets while Subaccounts & RBAC enforce least-privilege access.
 
 ## 21. Reference Inspiration
 
 ZoneMinder, Frigate, OpenNVR, Shinobi, Moonfire NVR, and iSpy inform the design.
-EOF
-wc -l /opt/repo/vigilcam/docs/SPECIFICATION.md

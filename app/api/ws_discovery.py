@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 import app.services.ws_discovery as svc
 
@@ -31,12 +31,11 @@ class WsDiscoveryDevice(BaseModel):
 
 
 class WsDiscoverRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     timeout: float = Field(default=4.0, gt=0, le=60)
     types: Optional[Any] = None
     scopes: Optional[Any] = None
-
-    class Config:
-        extra = "allow"
 
 
 def _device_payload(device: Any) -> dict:

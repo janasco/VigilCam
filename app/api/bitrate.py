@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import app.services.bitrate as svc
 
@@ -36,8 +36,7 @@ class SampleRequest(BaseModel):
     timeout: Optional[float] = None
     timeout_seconds: Optional[float] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 def _timeout_from(payload: dict, default: float = 5.0) -> float:

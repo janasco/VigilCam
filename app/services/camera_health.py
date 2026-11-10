@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
 # Tunables.
@@ -24,7 +24,7 @@ _HEALTH: Dict[int, "CameraHealth"] = {}
 
 
 def _now() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _coerce_camera_id(value: Any) -> Optional[int]:

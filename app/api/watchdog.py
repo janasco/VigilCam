@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastapi import APIRouter, Body, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import app.services.watchdog as watchdog_service_mod
 
@@ -13,6 +13,8 @@ router = APIRouter(prefix="/api/watchdog", tags=["watchdog"])
 
 
 class WatchdogConfigUpdate(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     enabled: Optional[bool] = None
     auto_restart: Optional[bool] = None
     check_interval_seconds: Optional[float] = None
@@ -25,9 +27,6 @@ class WatchdogConfigUpdate(BaseModel):
     max_attempts: Optional[int] = None
     restart_cooldown_seconds: Optional[float] = None
     cooldown: Optional[float] = None
-
-    class Config:
-        extra = "allow"
 
 
 def _serialize(state: Any) -> Any:

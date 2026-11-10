@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 import app.services.time_autosync as svc
 
@@ -32,8 +32,7 @@ class AutosyncConfigRequest(BaseModel):
     timeout: Optional[float] = None
     auto_sync: Optional[bool] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class AutosyncRunRequest(BaseModel):
@@ -52,8 +51,7 @@ class AutosyncRunRequest(BaseModel):
     port: Optional[int] = None
     scheme: Optional[str] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 def _payload(model: Any, body: Any) -> Dict[str, Any]:

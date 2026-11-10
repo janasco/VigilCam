@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastapi import APIRouter, Body, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import app.services.rtsp_health as rtsp_health_mod
 
@@ -30,8 +30,7 @@ class RtspStreamRegister(BaseModel):
     public_header: Optional[str] = None
     session_timeout_seconds: Optional[float] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 def _serialize(state: Any) -> Any:

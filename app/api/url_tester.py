@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import app.services.url_tester as svc
 
@@ -20,6 +20,8 @@ underscore_router = APIRouter(prefix="/api/url_tester", tags=["url-tester"])
 
 
 class UrlTestRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     url: Optional[str] = None
     target: Optional[str] = None
     stream_url: Optional[str] = None
@@ -36,9 +38,6 @@ class UrlTestRequest(BaseModel):
     height: Optional[Any] = None
     timeout: Optional[float] = None
     timeout_seconds: Optional[float] = None
-
-    class Config:
-        extra = "allow"
 
 
 def _payload_dict(payload: Any) -> dict:

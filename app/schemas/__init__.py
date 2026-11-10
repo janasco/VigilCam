@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import warnings
 from datetime import datetime
 from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+warnings.filterwarnings(
+    "ignore",
+    message='.*Field name "json" in .* shadows an attribute in parent "BaseModel".*',
+)
 
 
 class CameraBase(BaseModel):

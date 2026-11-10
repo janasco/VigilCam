@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import app.services.script_runner as svc
 
@@ -28,8 +28,7 @@ class ScriptRunRequest(BaseModel):
     timeout: Optional[float] = None
     timeout_seconds: Optional[float] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 def _payload_dict(payload: Any) -> dict:

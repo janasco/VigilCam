@@ -74,5 +74,3 @@ Consolidated highlights from deep scans of the reference repositories in
 - Action framework: sound, command, URL, network, email, SMS, camera control.
 - Plugin DLL extensibility and localization.
 - MSI installer and companion monitor process.
-EOF
-echo done

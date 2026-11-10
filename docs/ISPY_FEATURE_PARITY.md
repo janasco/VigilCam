@@ -280,3 +280,11 @@ backend-first and still need UI polish or production hardening.
 6. Expand i18n, themes, permissions, and mobile responsiveness.
 7. Implement outbound relay and MCP tool surface.
 8. Add plugin/adapter SDK for external detectors and actions.
+
+## Recent Implementation Highlights
+
+- **Core Camera & Discovery**: USB V4L2 capture path, RTSP/HTTP ingestion, ONVIF WS-Discovery, profile probing, PullPoint event subscriptions, and brand URL source presets.
+- **8-Tab Web UI & UX**: Full workspace spanning `Dashboard`, `Cameras`, `Events`, `People`, `Review`, `Recordings`, `Automate`, and `System`, with persistent Dark/Light theme toggle synced with the 5-step Setup Wizard, Keyboard Shortcuts modal (`?`, `1`–`8`, `W`, `D`, `R`, `j`/`k`), Fullscreen Live Wall with group filtering & auto-cycle, and custom confirmation modals.
+- **Motion, AI & Analytics**: Interactive Motion Tuner, Line-Crossing Tripwires with counting, Face Recognition & Enrollment, License Plate Recognition (LPR/ANPR), Review feedback loop, and AI Model Registry.
+- **Media, Exports & Cloud**: Lossless Clip Trim, EDL/SRT/Compliance exports with SHA-256 manifests, and Cloud/FTP/S3 upload connectors.
+- **Automation, PTZ & System**: PTZ Auto-Tracking, Patrol Tours, Solar (Sunrise/Sunset) Schedules, Email Digest Scheduler, Web Push Notifications, Hardware Acceleration (`VAAPI`/`NVENC`/`QSV`/`V4L2-M2M`), Multi-Server Node Dispatch, Dual-NIC Camera LAN Hardening, and Subaccounts/RBAC.

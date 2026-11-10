@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 import app.services.rtsp_paths as svc
 
@@ -36,8 +36,7 @@ class SingleProbeRequest(BaseModel):
     timeout: Optional[float] = None
     timeout_seconds: Optional[float] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class ScanRequest(BaseModel):
@@ -54,8 +53,7 @@ class ScanRequest(BaseModel):
     timeout_seconds: Optional[float] = None
     max_paths: Optional[int] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 def _payload_dict(payload: Any) -> dict:

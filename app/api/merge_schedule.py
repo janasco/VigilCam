@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 import app.services.merge_schedule as svc
 from app.api.deps import db_session
@@ -35,8 +35,7 @@ class ScheduleConfigRequest(BaseModel):
     camera: Optional[Any] = None
     limit: Optional[int] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class MergeRunRequest(BaseModel):
@@ -49,8 +48,7 @@ class MergeRunRequest(BaseModel):
     events: Optional[Any] = None
     items: Optional[Any] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 def _payload(model: Any, body: Any) -> Dict[str, Any]:
