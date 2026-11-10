@@ -6,7 +6,7 @@ import time
 from typing import Any, AsyncGenerator, Optional
 
 from fastapi import APIRouter, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 
 router = APIRouter(prefix="/api/streams", tags=["streams"])
 
@@ -35,10 +35,16 @@ async def _mjpeg_generator(camera_id: Any, fps: float = 1.0, frames: Optional[in
     boundary = "frame"
     delay = 1.0 / max(0.1, float(fps or 1.0))
     count = 0
+    from app.services import thumbnails as _th
+
     while True:
         if frames is not None and count >= frames:
             break
-        jpeg = _placeholder_jpeg(f"Cam {camera_id}")
+        try:
+            refresh = (count == 0) or (count % 5 == 0)
+            jpeg = _th.get_thumbnail(camera_id, refresh=refresh)
+        except Exception:
+            jpeg = _placeholder_jpeg(f"Cam {camera_id}")
         yield (
             b"--" + boundary.encode() + b"\r\n"
             b"Content-Type: image/jpeg\r\n"
@@ -47,6 +53,16 @@ async def _mjpeg_generator(camera_id: Any, fps: float = 1.0, frames: Optional[in
         )
         count += 1
         await asyncio.sleep(delay)
+
+
+@router.get("/{camera_id}/snapshot")
+async def snapshot_image(camera_id: Any, refresh: bool = False):
+    from app.services import thumbnails as _th
+    try:
+        jpeg = _th.get_thumbnail(camera_id, refresh=refresh)
+    except Exception:
+        jpeg = _placeholder_jpeg(f"Cam {camera_id}")
+    return Response(content=jpeg, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=5"})
 
 
 @router.get("/{camera_id}/mjpeg")

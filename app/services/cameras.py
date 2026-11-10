@@ -65,6 +65,11 @@ async def create_camera(db: AsyncSession, payload: CameraCreate) -> Camera:
         derived = derive_ip_address(data.get("source"), data.get("onvif_host"))
         if derived:
             data["ip_address"] = derived
+    src = str(data.get("source") or "").strip()
+    if src and "://" not in src and not src.startswith("/dev/"):
+        import re as _re
+        if _re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?(/.*)?$", src):
+            data["source"] = f"rtsp://{src}"
     if not data.get("slug"):
         data["slug"] = await ensure_unique_slug(db, slugify_name(data.get("name") or "camera"))
     else:

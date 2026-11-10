@@ -7,6 +7,8 @@ and stream previews to avoid re-encoding a frame on every poll.
 from __future__ import annotations
 
 import io
+import shutil
+import subprocess
 import threading
 import time
 from dataclasses import dataclass
@@ -115,16 +117,59 @@ def _placeholder_jpeg(label: str = "VigilCam", width: int = DEFAULT_WIDTH,
         )
 
 
+def _lookup_camera_source(camera_id: Any) -> Optional[str]:
+    try:
+        cid = int(_coerce_key(camera_id))
+    except (TypeError, ValueError):
+        return None
+    try:
+        import sqlite3
+        conn = sqlite3.connect("data/vigilcam.db", timeout=3)
+        row = conn.execute("SELECT source FROM cameras WHERE id = ?", (cid,)).fetchone()
+        conn.close()
+        if row and row[0]:
+            return str(row[0]).strip()
+    except Exception:
+        pass
+    return None
+
+
 def _capture_frame(camera_id: Any, width: int = DEFAULT_WIDTH,
                    height: int = DEFAULT_HEIGHT) -> bytes:
     """Produce a fresh thumbnail frame for a camera.
 
-    Currently renders a placeholder labelled with the camera key. Kept as a
-    separate hook so a real frame-grabber (RTSP/shared-memory) can replace
-    it without changing cache semantics.
+    Attempts to grab a live frame from RTSP / HTTP / V4L2 source if available
+    via ffmpeg, falling back to a placeholder JPEG.
     """
     key = _coerce_key(camera_id)
     w, h = _coerce_dims(width, height)
+
+    source = _lookup_camera_source(key)
+    if source and shutil.which("ffmpeg"):
+        try:
+            is_rtsp = source.lower().startswith("rtsp://")
+            cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"]
+            if is_rtsp:
+                cmd += ["-rtsp_transport", "tcp"]
+            cmd += [
+                "-i", str(source),
+                "-vframes", "1",
+                "-s", f"{w}x{h}",
+                "-f", "image2",
+                "-q:v", "3",
+                "pipe:1",
+            ]
+            proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=4.0)
+            if proc.returncode == 0 and len(proc.stdout) > 200 and proc.stdout[:2] == b"\xff\xd8":
+                try:
+                    from app.services import camera_health as _ch
+                    _ch.mark_frame_received(int(key))
+                except Exception:
+                    pass
+                return proc.stdout
+        except Exception:
+            pass
+
     return _placeholder_jpeg("Cam {}".format(key), width=w, height=h)
 
 
