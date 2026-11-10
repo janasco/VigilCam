@@ -549,6 +549,10 @@ def discover_sync(
     return _discover_sync(timeout, types=types, scopes=scopes, message_id=message_id)
 
 
+discover_devices = discover
+discover_devices_sync = discover_sync
+
+
 __all__ = [
     "WS_MULTICAST_ADDRESS",
     "WS_MULTICAST_PORT",
@@ -569,4 +573,6 @@ __all__ = [
     "get_local_ipv4_addresses",
     "discover",
     "discover_sync",
+    "discover_devices",
+    "discover_devices_sync",
 ]

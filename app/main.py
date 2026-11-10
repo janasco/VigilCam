@@ -161,6 +161,14 @@ try:
 except Exception:  # noqa: BLE001
     webhook_queue_router = None
 try:
+    from app.api.weather import router as weather_router
+except Exception:  # noqa: BLE001
+    weather_router = None
+try:
+    from app.api.barcodes import router as barcodes_router
+except Exception:  # noqa: BLE001
+    barcodes_router = None
+try:
     from app.services.event_bus import event_bus
 except Exception:  # noqa: BLE001
     event_bus = None
@@ -258,9 +266,10 @@ except Exception:  # noqa: BLE001
 
 # Router registration handled by auto-loader above.
 
-for _r in (audit_router, email_alerts_router, floorplan_router, localization_router, nodes_router, restream_router, sms_alerts_router, source_presets_router2, storage_quota_router, talk_router, webhook_queue_router):
-    if _r is not None:
+for _r in (audit_router, email_alerts_router, floorplan_router, localization_router, nodes_router, restream_router, sms_alerts_router, source_presets_router2, storage_quota_router, talk_router, webhook_queue_router, weather_router, barcodes_router):
+    if _r is not None and id(_r) not in getattr(app, "_registered_router_ids", set()):
         app.include_router(_r)
+        app._registered_router_ids = getattr(app, "_registered_router_ids", set()) | {id(_r)}
 
 
 @app.websocket("/ws/events")

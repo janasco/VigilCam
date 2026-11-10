@@ -47,14 +47,16 @@ async def _http_probe(ip: str, port: int, timeout: float) -> dict[str, Any]:
             if "onvif" in text or "onvif" in (info["server"] or "").lower():
                 info["onvif"] = True
     except Exception:  # noqa: BLE001
-        return info
+        pass
     # Try ONVIF device service endpoint with a real SOAP envelope.
     # An empty POST proves nothing (any web server answers 400/404), so only
     # treat SOAP-looking answers as ONVIF hints; real verification happens in
     # _onvif_verify() via GetSystemDateAndTime.
     soap_probe = (
-        '<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope">'
-        "<s:Body/></s:Envelope>"
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" '
+        'xmlns:tds="http://www.onvif.org/ver10/device/wsdl">'
+        '<s:Body><tds:GetSystemDateAndTime/></s:Body></s:Envelope>'
     )
     for path in _ONVIF_PATHS:
         try:
@@ -64,6 +66,9 @@ async def _http_probe(ip: str, port: int, timeout: float) -> dict[str, Any]:
                     content=soap_probe.encode(),
                     headers={"Content-Type": "application/soap+xml; charset=utf-8"},
                 )
+                info["reachable"] = True
+                if info["status"] is None:
+                    info["status"] = r.status_code
                 body = (r.text or "").lower()
                 if "envelope" in body or "getsystemdateandtime" in body or "notauthorized" in body or "onvif" in body:
                     info["onvif"] = True
@@ -160,7 +165,8 @@ async def scan_host(ip: str, timeout: float = 0.5, **kwargs: Any) -> Optional[di
                 device["server"] = http_info["server"]
                 if not device["name"] or device["name"] == f"Camera {ip}":
                     device["name"] = http_info["server"]
-            break
+            if device["onvif"]:
+                break
 
     if device["http"]:
         device["protocols"].append("http")
@@ -176,19 +182,33 @@ async def scan_host(ip: str, timeout: float = 0.5, **kwargs: Any) -> Optional[di
     if verify not in (False, 0, "0", "false", "False", "no", "off"):
         vtimeout = float(kwargs.get("verify_timeout", min(timeout * 4, 4.0)))
         verified_method = None
-        if device["onvif"]:
-            for p in open_http_ports:
-                try:
-                    if await _onvif_verify(ip, p, vtimeout):
-                        device["onvif_verified"] = True
-                        verified_method = f"onvif:{p}"
-                        break
-                except Exception:  # noqa: BLE001
-                    continue
-            if verified_method is None:
-                # Hint said ONVIF but no SOAP answer: don't trust it.
-                device["onvif"] = False
-                device["protocols"] = [x for x in device["protocols"] if x != "onvif"]
+
+        # Check for ONVIF using _onvif_verify across open HTTP ports (8899, 80, 8000, 8080, 5000)
+        onvif_ports_order = [8899, 80, 8000, 8080, 5000]
+        check_ports = sorted(
+            open_http_ports,
+            key=lambda x: onvif_ports_order.index(x) if x in onvif_ports_order else 999
+        )
+        for p in check_ports:
+            try:
+                if await _onvif_verify(ip, p, vtimeout):
+                    device["onvif"] = True
+                    device["kind"] = "onvif"
+                    device["onvif_verified"] = True
+                    device["verified"] = True
+                    device["verify_method"] = f"onvif:{p}"
+                    if "onvif" not in device["protocols"]:
+                        device["protocols"].append("onvif")
+                    verified_method = f"onvif:{p}"
+                    break
+            except Exception:  # noqa: BLE001
+                continue
+
+        if verified_method is None and device["onvif"]:
+            # Hint said ONVIF but no SOAP answer: don't trust it.
+            device["onvif"] = False
+            device["protocols"] = [x for x in device["protocols"] if x != "onvif"]
+
         if verified_method is None and device["rtsp"]:
             for p in open_rtsp_ports:
                 try:
@@ -206,11 +226,12 @@ async def scan_host(ip: str, timeout: float = 0.5, **kwargs: Any) -> Optional[di
             device["verify_method"] = verified_method
 
     # Kind / source
+    primary_rtsp = open_rtsp_ports[0] if open_rtsp_ports else 554
     if device["onvif"]:
         device["kind"] = "onvif"
         http_port = open_http_ports[0] if open_http_ports else 80
         device["source"] = f"onvif://{ip}:{http_port}"
-        device["stream_url"] = None
+        device["stream_url"] = f"rtsp://{ip}:{primary_rtsp}/"
     elif device["rtsp"]:
         device["kind"] = "ip"
         rtsp_port = open_rtsp_ports[0] if open_rtsp_ports else 554

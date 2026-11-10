@@ -19,3 +19,10 @@ tmp/
 
 # Vendored reference code
 vendor/
+
+# Legacy untracked shims
+face.py
+face_recognition.py
+face_recognition_pipeline.py
+templates/
+vigilcam/
